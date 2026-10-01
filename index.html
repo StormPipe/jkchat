@@ -4,10 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>JK Chat Organizer</title>
-<link rel="apple-touch-icon" href="icon.png">
-<link rel="manifest" href="manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="JK Chat">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
@@ -243,7 +239,7 @@
 <div class="app">
   <header class="top">
     <h1>JK Chat Organizer</h1>
-    <p class="app-version">JKChat · Version 1.3.0</p>
+    <p class="app-version">JKChat · Version 1.3.1</p>
     <p class="sub" id="subLine">Sort chats from every AI engine into one place</p>
     <div class="actions-row">
       <button class="btn primary" id="addBtn">+ Add chat</button>
@@ -533,6 +529,15 @@
     const u = /https?:\/\/[^\s)]+/.exec(c.notes || '');
     return u ? u[0] : null;
   }
+  // On iPhone/iPad the Claude / ChatGPT app can grab these links and open to its home screen.
+  // x-safari-https:// forces the real chat page in Safari instead.
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a[target="_blank"]');
+    if (!isIOS || !a || !/^https:\/\/(claude\.ai|chatgpt\.com)\//.test(a.href)) return;
+    e.preventDefault();
+    location.href = 'x-safari-' + a.href;
+  });
   function rowClick(c) {
     if (selectMode) { toggleSel(c.id); return; }
     openChatSheet(c);
