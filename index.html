@@ -47,34 +47,36 @@
     font-size: 15px; line-height: 1.45; -webkit-tap-highlight-color: transparent;
   }
   .app { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; min-height: 100%; }
-  header.top {
-    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
-    background: var(--bg); padding: 18px 16px 10px; border-bottom: 1px solid var(--line);
+  header.top { background: var(--bg); padding: 8px 14px 4px; }
+  .stick {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--bg);
+    padding: 4px 14px 6px; border-bottom: 1px solid var(--line);
   }
-  h1 { font-family: "Space Grotesk", -apple-system, sans-serif; font-size: 21px; font-weight: 700; margin: 0 0 2px; letter-spacing: -0.01em; }
-  .sub { color: var(--ink-soft); font-size: 12.5px; margin: 0 0 12px; }
-  .actions-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
+  .titlebar { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+  h1 { font-family: "Space Grotesk", -apple-system, sans-serif; font-size: 17px; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+  .sub { color: var(--ink-soft); font-size: 12px; margin: 0; }
+  .actions-row { display: flex; gap: 6px; margin-bottom: 6px; align-items: center; flex-wrap: wrap; }
   .btn {
     font-family: inherit; font-size: 13.5px; font-weight: 600; border: 1px solid var(--line);
-    background: var(--paper); color: var(--ink); border-radius: var(--radius); padding: 9px 14px;
+    background: var(--paper); color: var(--ink); border-radius: var(--radius); padding: 6px 11px;
     cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
   }
   .btn:active { transform: scale(0.97); }
   .btn.primary { background: var(--amber); border-color: var(--amber); color: #1C1B19; }
   .btn.ghost { background: transparent; }
   .btn.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
-  .btn.small { padding: 6px 11px; font-size: 12.5px; }
+  .btn.small { padding: 5px 8px; font-size: 12.5px; }
   .btn.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
   .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
   .seg button {
     font-family: inherit; font-size: 13px; font-weight: 600; border: none; background: var(--paper);
-    color: var(--ink-soft); padding: 7px 13px; cursor: pointer;
+    color: var(--ink-soft); padding: 5px 11px; cursor: pointer;
   }
   .seg button.on { background: var(--ink); color: var(--bg); }
   .spacer { flex: 1; }
   .search {
-    width: 100%; padding: 9px 12px; border-radius: var(--radius); border: 1px solid var(--line);
-    background: var(--paper); color: var(--ink); font-size: 14px; margin-bottom: 10px;
+    width: 100%; padding: 7px 12px; border-radius: var(--radius); border: 1px solid var(--line);
+    background: var(--paper); color: var(--ink); font-size: 14px; margin-bottom: 6px;
   }
   .search:focus { outline: 2px solid var(--amber); outline-offset: 1px; }
   .folders { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
@@ -86,7 +88,7 @@
   }
   .chip.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
   .chip .count { opacity: 0.6; margin-left: 4px; font-weight: 500; }
-  main { flex: 1; padding: 14px 16px 120px; }
+  main { flex: 1; padding: 10px 14px 120px; }
   .empty { text-align: center; color: var(--ink-soft); padding: 60px 20px; font-size: 14px; }
   .empty strong { display: block; color: var(--ink); font-size: 16px; margin-bottom: 6px; font-family: "Space Grotesk", sans-serif; }
   .empty .btn { margin-top: 14px; }
@@ -126,37 +128,55 @@
   .selected .check { background: var(--amber); border-color: var(--amber); color: #1C1B19; }
   .open-link { font-size: 11.5px; font-weight: 700; color: var(--amber); text-decoration: none; padding: 4px 8px; margin: -4px 0 -4px 8px; border: 1px solid var(--amber); border-radius: 999px; white-space: nowrap; }
   .open-link:active { transform: scale(0.95); }
-  .app-version { color: var(--ink-soft); font-size: 11px; margin: 0 0 4px; }
+  .app-version { color: var(--ink-soft); font-size: 11px; margin: 0; }
   .more-btn { display: block; margin: 12px auto 0; }
 
-  /* bracket view */
-  .br-group { display: flex; align-items: stretch; gap: 10px; margin-bottom: 18px; }
-  .br-name {
-    flex: 0 0 auto; max-width: 30%; align-self: center; font-family: "Space Grotesk", sans-serif;
-    font-weight: 600; font-size: 15px; cursor: pointer; word-break: break-word; line-height: 1.25;
+  /* bracket view (tree with left trunk, ticks and elbows) */
+  :root { --trunk: var(--ink-soft); }
+  .tr-node { position: relative; padding-left: 16px; }
+  .tr-node::before { content: ""; position: absolute; left: 3px; top: 0; bottom: 0; width: 11px; border-left: 2px solid var(--trunk); }
+  .tr-node::after { content: ""; position: absolute; left: 3px; top: 16px; width: 11px; border-top: 2px solid var(--trunk); }
+  .tr-node.last::before { bottom: auto; height: 17px; border-bottom-left-radius: 5px; }
+  .tr-root { padding-left: 0; }
+  .tr-root::before, .tr-root::after { display: none; }
+  .tr-head {
+    display: flex; align-items: center; gap: 6px; padding: 5px 4px; min-height: 32px; font-weight: 700; font-size: 14.5px;
+    cursor: pointer; border-radius: 8px; -webkit-user-select: none; user-select: none;
   }
-  .br-name small { display: block; font-family: -apple-system, sans-serif; font-weight: 500; font-size: 11.5px; color: var(--ink-soft); }
-  .br-brace {
-    flex: 0 0 12px; position: relative; border: 2px solid var(--ink); border-right: none;
-    border-radius: 10px 0 0 10px; min-height: 30px;
+  .tr-head .n { color: var(--ink-soft); font-weight: 500; font-size: 12px; }
+  .tr-head .grow { flex: 1; }
+  .tr-head .tri { width: 14px; color: var(--ink-soft); font-size: 11px; }
+  .tr-head .more { padding: 0 6px; color: var(--ink-soft); }
+  .tr-folder { margin-top: 2px; }
+  .tr-folder.drop-hot > .tr-head, .chip.drop-hot { background: var(--amber-soft); outline: 2px dashed var(--amber); }
+  .tr-folder.collapsed > .tr-items { display: none; }
+  .tr-items { margin: 0 0 0 4px; padding: 0; list-style: none; }
+  .tr-row {
+    display: flex; align-items: center; gap: 8px; padding: 6px 4px; font-size: 14px; min-height: 32px; cursor: pointer;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; border-radius: 6px;
   }
-  .br-brace::before {
-    content: ""; position: absolute; left: -10px; top: 50%; width: 10px; height: 2px;
-    background: var(--ink); transform: translateY(-1px);
+  .tr-row .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tr-row .d { color: var(--ink-soft); font-size: 11.5px; white-space: nowrap; }
+  .tr-row .dot { color: var(--amber); }
+  .tr-row .tag { font-size: 9.5px; padding: 1px 5px; }
+  .tr-row .check { flex: 0 0 18px; height: 18px; font-size: 11px; }
+  .tr-node.sel > .tr-row { background: var(--amber-soft); }
+  .tr-node.openrow > .tr-row { background: var(--amber-soft); }
+  .tr-node.dragsrc { opacity: 0.35; }
+  .tr-more, .tr-add { color: var(--ink-soft); font-size: 13px; cursor: pointer; }
+  .tr-detail { padding: 2px 4px 8px; }
+  .tr-detail .notes { color: var(--ink-soft); font-size: 12.5px; margin: 0 0 6px; max-height: 6.5em; overflow: hidden; }
+  .tr-detail .meta { color: var(--ink-soft); font-size: 11.5px; margin: 0 0 8px; }
+  .tr-detail .acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .tr-detail select { font-family: inherit; font-size: 13px; padding: 5px 6px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--paper); color: var(--ink); max-width: 150px; }
+  .drag-ghost {
+    position: fixed; z-index: 90; pointer-events: none; background: var(--ink); color: var(--bg); border-radius: 10px;
+    padding: 7px 12px; font-size: 13px; font-weight: 600; max-width: 70vw; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; box-shadow: 0 6px 20px rgba(0,0,0,.35); transform: translate(-50%, -130%);
   }
-  .br-items { flex: 1; min-width: 0; margin: 0; padding: 0; list-style: none; }
-  .br-items li {
-    display: flex; align-items: center; gap: 8px; padding: 6px 4px; font-size: 14px;
-    border-bottom: 1px dotted var(--line); cursor: pointer;
-  }
-  .br-items li:last-child { border-bottom: none; }
-  .br-items li .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .br-items li.selected { background: var(--amber-soft); border-radius: 6px; }
-  .br-items li .tag { font-size: 9.5px; padding: 1px 5px; }
-  .br-items li .check { flex-basis: 18px; height: 18px; font-size: 11px; }
-  .br-items li.dim, .br-items .addrow { color: var(--ink-soft); font-size: 13px; }
-  .br-items .addrow { cursor: pointer; border-bottom: none; }
-  .br-group.collapsed .br-items li:not(.keep) { display: none; }
+  body.dragging { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  .brOnly { display: none; }
+  body.view-brackets .brOnly { display: inline-flex; }
 
   .fab {
     position: fixed; right: 20px; bottom: calc(24px + env(safe-area-inset-bottom, 0px));
@@ -238,27 +258,32 @@
 <body>
 <div class="app">
   <header class="top">
-    <h1>JK Chat Organizer</h1>
-    <p class="app-version">JKChat · Version 1.4.0</p>
-    <p class="sub" id="subLine">Sort chats from every AI engine into one place</p>
+    <div class="titlebar">
+      <h1>JK Chat Organizer</h1>
+      <span class="sub" id="subLine">Sort chats from every AI engine into one place</span>
+    </div>
+    <p class="app-version" id="verLine">JKChat · Version 1.5.0</p>
     <div class="actions-row">
-      <button class="btn primary" id="addBtn">+ Add chat</button>
-      <button class="btn" id="importBtn">Import</button>
-      <button class="btn ghost" id="folderBtn">Folders</button>
-      <button class="btn ghost" id="queueBtn">To delete at source</button>
+      <button class="btn primary small" id="addBtn">+ Add</button>
+      <button class="btn small" id="importBtn">Import</button>
+      <button class="btn small ghost" id="folderBtn">Folders</button>
+      <button class="btn small ghost" id="queueBtn">To delete</button>
+      <button class="btn small" id="selectBtn">Select</button>
     </div>
     <div class="actions-row">
       <div class="seg" id="viewSeg">
         <button data-view="list">List</button>
         <button data-view="brackets">Brackets</button>
       </div>
-      <button class="btn small" id="selectBtn">Select</button>
-      <span class="spacer"></span>
-      <button class="btn small ghost" id="copyOutlineBtn" style="display:none">Copy outline</button>
+      <button class="btn small brOnly" id="expandAllBtn">Expand all</button>
+      <button class="btn small brOnly" id="collapseAllBtn">Collapse all</button>
+      <button class="btn small ghost brOnly" id="copyOutlineBtn" title="Copy outline">Copy</button>
     </div>
+  </header>
+  <div class="stick">
     <input type="text" class="search" id="searchInput" placeholder="Search titles and notes…">
     <div class="folders" id="folderChips"></div>
-  </header>
+  </div>
   <main id="main"></main>
 </div>
 
@@ -449,10 +474,11 @@
   function renderHeader() {
     const n = state.chats.length, u = state.chats.filter(c => !c.folder).length;
     $('subLine').textContent = n === 0 ? 'Sort chats from every AI engine into one place' : n + ' chats · ' + u + ' unsorted';
+    $('verLine').textContent = 'JKChat · Version ' + APP_VERSION + ' · ' + runMode().label;
     document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('on', b.dataset.view === state.view));
     $('selectBtn').classList.toggle('on', selectMode);
     $('selectBtn').textContent = selectMode ? 'Selecting' : 'Select';
-    $('copyOutlineBtn').style.display = state.view === 'brackets' ? '' : 'none';
+    document.body.classList.toggle('view-brackets', state.view === 'brackets');
     document.body.classList.toggle('selecting', selectMode);
   }
   function renderFolderChips() {
@@ -463,6 +489,7 @@
     ['All', 'Unsorted', ...state.folders].forEach(f => {
       const chip = document.createElement('div');
       chip.className = 'chip' + (state.activeFolder === f ? ' active' : '');
+      if (f !== 'All') chip.dataset.drop = f === 'Unsorted' ? '' : f;
       chip.innerHTML = escapeHtml(f) + '<span class="count">' + (counts[f] || 0) + '</span>';
       chip.onclick = () => { state.activeFolder = f; listLimit = PAGE; save(); renderAll(); };
       el.appendChild(chip);
@@ -519,8 +546,27 @@
     card.addEventListener('click', e => { if (e.target.closest('.open-link')) return; rowClick(c); });
     wrap.appendChild(card);
     attachSwipe(card, () => deleteChats([c.id]));
+    attachDrag(card, wrap, c);
     return wrap;
   }
+  const APP_VERSION = '1.5.0';
+  // Where is this page running? Home Screen apps and file previews can't open signed-in Safari links.
+  function runMode() {
+    if (navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)) return { label: 'Home Screen app', linksOk: false };
+    if (location.protocol === 'file:') return { label: 'file preview', linksOk: false };
+    return { label: 'Safari', linksOk: true };
+  }
+  // Every Open tap also copies the link, so "paste into Safari" is one step away if the tap goes nowhere.
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a[href]');
+    if (!a || !(a.classList.contains('open-link') || a.dataset.open || a.id === 'openChatBtn' || a.closest('#queueBody'))) return;
+    const url = a.href;
+    try { navigator.clipboard && navigator.clipboard.writeText(url); } catch (_) {}
+    if (!runMode().linksOk) {
+      e.preventDefault();
+      showToast('Link copied. This is the ' + runMode().label + ' - paste it into Safari. (Open the page in a Safari tab for one-tap Open.)');
+    }
+  }, true);
   // Live chat URL: from the export id kept in c.ext (claude:<uuid>, chatgpt:<id>),
   // else the first URL pasted into notes. Gemini exports carry no id.
   function chatUrl(c) {
@@ -542,59 +588,177 @@
     if (state.activeFolder !== 'All') return groups.filter(g => g.name === state.activeFolder);
     return groups;
   }
+  const shortDate = ms => new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  let openRowId = null;
+  function setCollapsedAll(on) {
+    bracketGroups().forEach(g => { state.collapsed[g.name] = on; });
+    state.collapsed['__root'] = false;
+    save(); renderBrackets();
+  }
   function renderBrackets() {
     const main = $('main');
     main.innerHTML = '';
     if (state.chats.length === 0) { emptyState(main); return; }
     const searching = $('searchInput').value.trim() !== '';
-    bracketGroups().forEach(g => {
-      if (searching && g.chats.length === 0) return;
+    const groups = bracketGroups().filter(g => !(searching && g.chats.length === 0));
+    if (!groups.length) { emptyState(main); return; }
+    const total = groups.reduce((n, g) => n + g.chats.length, 0);
+    const rootCollapsed = !!state.collapsed['__root'] && !searching;
+    const root = document.createElement('div');
+    root.className = 'tr-node tr-root';
+    const rh = document.createElement('div');
+    rh.className = 'tr-head';
+    rh.innerHTML = '<span class="tri">' + (rootCollapsed ? '▸' : '▾') + '</span><span>All chats</span><span class="n">' + total + '</span>';
+    rh.onclick = () => { state.collapsed['__root'] = !state.collapsed['__root']; save(); renderBrackets(); };
+    root.appendChild(rh);
+    main.appendChild(root);
+    if (rootCollapsed) return;
+    groups.forEach((g, gi) => {
       const collapsed = !!state.collapsed[g.name] && !searching;
-      const sec = document.createElement('section');
-      sec.className = 'br-group' + (collapsed ? ' collapsed' : '');
-      const name = document.createElement('div');
-      name.className = 'br-name';
-      name.innerHTML = (collapsed ? '▸ ' : '') + escapeHtml(g.name) + '<small>' + g.chats.length + '</small>';
-      name.title = 'Tap to collapse or expand';
-      name.onclick = () => { state.collapsed[g.name] = !state.collapsed[g.name]; save(); renderBrackets(); };
-      sec.appendChild(name);
-      const brace = document.createElement('div');
-      brace.className = 'br-brace';
-      sec.appendChild(brace);
+      const node = document.createElement('div');
+      node.className = 'tr-node tr-folder' + (gi === groups.length - 1 ? ' last' : '') + (collapsed ? ' collapsed' : '');
+      node.dataset.drop = g.key;
+      const head = document.createElement('div');
+      head.className = 'tr-head';
+      head.innerHTML = '<span class="tri">' + (collapsed ? '▸' : '▾') + '</span><span>' + escapeHtml(g.name) + '</span><span class="n">' + g.chats.length + '</span><span class="grow"></span><span class="more" title="Add chat here">＋</span>';
+      head.onclick = e => {
+        if (e.target.closest('.more')) { openChatSheet(null, g.key); return; }
+        state.collapsed[g.name] = !state.collapsed[g.name]; save(); renderBrackets();
+      };
+      node.appendChild(head);
       const ul = document.createElement('ul');
-      ul.className = 'br-items';
+      ul.className = 'tr-items';
       const cap = expanded[g.name] ? Infinity : BR_CAP;
-      g.chats.slice(0, cap).forEach(c => {
+      const shown = g.chats.slice(0, cap);
+      const extra = g.chats.length > cap;
+      shown.forEach((c, i) => {
         const li = document.createElement('li');
-        li.className = selected.has(c.id) ? 'selected' : '';
-        li.innerHTML = (selectMode ? '<span class="check">✓</span>' : '') +
+        const isLast = i === shown.length - 1 && !extra;
+        li.className = 'tr-node' + (isLast ? ' last' : '') + (selected.has(c.id) ? ' sel' : '') + (openRowId === c.id ? ' openrow' : '');
+        li.dataset.id = c.id;
+        const row = document.createElement('div');
+        row.className = 'tr-row';
+        row.innerHTML = (selectMode ? '<span class="check">' + (selected.has(c.id) ? '✓' : '') + '</span>' : '<span class="dot">●</span>') +
           '<span class="t">' + escapeHtml(c.title) + '</span>' +
-          '<span class="tag ' + c.source + '">' + (sourceShort[c.source] || '?') + '</span>';
-        li.onclick = () => rowClick(c);
+          '<span class="tag ' + c.source + '">' + (sourceShort[c.source] || '?') + '</span>' +
+          '<span class="d">' + shortDate(c.updatedAt || c.createdAt) + '</span>';
+        row.onclick = () => {
+          if (selectMode) { toggleSel(c.id); return; }
+          openRowId = openRowId === c.id ? null : c.id; renderBrackets();
+        };
+        attachDrag(row, li, c);
+        li.appendChild(row);
+        if (openRowId === c.id && !selectMode) li.appendChild(buildDetail(c));
         ul.appendChild(li);
       });
-      if (g.chats.length > cap) {
+      if (extra) {
         const more = document.createElement('li');
-        more.className = 'addrow';
-        more.textContent = '+ ' + (g.chats.length - cap) + ' more';
+        more.className = 'tr-node last tr-more';
+        more.innerHTML = '<div class="tr-row">+ ' + (g.chats.length - cap) + ' more</div>';
         more.onclick = () => { expanded[g.name] = true; renderBrackets(); };
         ul.appendChild(more);
       }
       if (g.chats.length === 0) {
         const none = document.createElement('li');
-        none.className = 'dim keep';
-        none.textContent = 'empty';
+        none.className = 'tr-node last tr-add';
+        none.innerHTML = '<div class="tr-row">empty — drop chats here</div>';
         ul.appendChild(none);
       }
-      const add = document.createElement('li');
-      add.className = 'addrow keep';
-      add.textContent = '+ add chat';
-      add.onclick = () => openChatSheet(null, g.key);
-      ul.appendChild(add);
-      sec.appendChild(ul);
-      main.appendChild(sec);
+      node.appendChild(ul);
+      root.appendChild(node);
     });
-    if (!main.children.length) emptyState(main);
+  }
+  function buildDetail(c) {
+    const d = document.createElement('div');
+    d.className = 'tr-detail';
+    const url = chatUrl(c);
+    d.innerHTML = (c.notes ? '<p class="notes">' + escapeHtml(c.notes) + '</p>' : '') +
+      '<p class="meta">Created ' + new Date(c.createdAt).toLocaleDateString() + (c.msgs ? ' · ' + c.msgs + ' msgs' : '') + ' · ' + (sourceLabels[c.source] || 'Other') + '</p>' +
+      '<div class="acts">' +
+      (url ? '<a class="btn small primary" data-open="1" style="text-decoration:none" target="_blank" rel="noopener" href="' + escapeHtml(url) + '">Open ↗</a>' : '') +
+      '<button class="btn small" data-act="edit">Edit</button>' +
+      '<select data-act="move"><option value="">Move to…</option><option value="__unsorted">Unsorted</option>' +
+        state.folders.map(f => '<option value="' + escapeHtml(f) + '">' + escapeHtml(f) + '</option>').join('') + '</select>' +
+      '<button class="btn small danger" data-act="del">Delete</button></div>';
+    d.querySelector('[data-act=edit]').onclick = () => openChatSheet(c);
+    d.querySelector('[data-act=del]').onclick = () => deleteChats([c.id]);
+    d.querySelector('[data-act=move]').onchange = e => {
+      const v = e.target.value; if (!v) return;
+      moveChats([c.id], v === '__unsorted' ? '' : v);
+    };
+    return d;
+  }
+  function moveChats(ids, folderKey) {
+    const idset = new Set(ids);
+    state.chats.forEach(c => { if (idset.has(c.id)) c.folder = folderKey || null; });
+    save(); renderAll();
+    showToast((ids.length === 1 ? 'Moved' : ids.length + ' moved') + ' to ' + (folderKey || 'Unsorted'));
+  }
+
+  // ---------- drag to move (long-press a row, drop on a folder or folder chip) ----------
+  let dragActive = false;
+  // iOS only honours preventDefault on touchmove if the listener is registered up front and non-passive
+  document.addEventListener('touchmove', e => { if (dragActive) e.preventDefault(); }, { passive: false });
+  function attachDrag(row, node, chat) {
+    let timer = null, sx = 0, sy = 0, ghost = null, hot = null, raf = 0, lastY = 0, pid = null;
+    const HOLD = 320, SLOP = 9;
+    const dropTarget = (x, y) => {
+      if (ghost) ghost.style.display = 'none';
+      const el = document.elementFromPoint(x, y);
+      if (ghost) ghost.style.display = '';
+      const t = el && el.closest('[data-drop]');
+      return t && t.dataset.drop !== undefined ? t : null;
+    };
+    const setHot = t => { if (hot === t) return; if (hot) hot.classList.remove('drop-hot'); hot = t; if (hot) hot.classList.add('drop-hot'); };
+    const stopScroll = () => { cancelAnimationFrame(raf); raf = 0; };
+    const scrollLoop = () => {
+      if (!dragActive) return;
+      const top = 150, bot = window.innerHeight - 90;
+      if (lastY < top) window.scrollBy(0, -Math.ceil((top - lastY) / 8));
+      else if (lastY > bot) window.scrollBy(0, Math.ceil((lastY - bot) / 8));
+      raf = requestAnimationFrame(scrollLoop);
+    };
+    const cleanup = () => {
+      clearTimeout(timer); timer = null; stopScroll();
+      document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', cancel);
+      if (ghost) ghost.remove(); ghost = null; setHot(null);
+      node.classList.remove('dragsrc'); document.body.classList.remove('dragging');
+      dragActive = false;
+    };
+    const start = e => {
+      dragActive = true; document.body.classList.add('dragging'); node.classList.add('dragsrc');
+      ghost = document.createElement('div'); ghost.className = 'drag-ghost';
+      const many = selected.has(chat.id) && selected.size > 1;
+      ghost.textContent = many ? selected.size + ' chats' : chat.title;
+      document.body.appendChild(ghost);
+      place(sx, sy); raf = requestAnimationFrame(scrollLoop);
+      row.addEventListener('click', swallow, { capture: true, once: true });
+    };
+    const swallow = e => { e.stopImmediatePropagation(); e.preventDefault(); };
+    const place = (x, y) => { lastY = y; if (ghost) { ghost.style.left = x + 'px'; ghost.style.top = y + 'px'; } setHot(dropTarget(x, y)); };
+    function move(e) {
+      if (e.pointerId !== pid) return;
+      if (!dragActive) { if (Math.hypot(e.clientX - sx, e.clientY - sy) > SLOP) cleanup(); return; }  // moved before hold finished: it's a scroll
+      place(e.clientX, e.clientY);
+    }
+    function up(e) {
+      if (e.pointerId !== pid) return;
+      const was = dragActive, t = was ? dropTarget(e.clientX, e.clientY) : null;
+      cleanup();
+      if (was && t) {
+        const ids = selected.has(chat.id) && selected.size > 1 ? [...selected] : [chat.id];
+        const key = t.dataset.drop;
+        if (!(ids.length === 1 && (chat.folder || '') === key)) moveChats(ids, key);
+      }
+    }
+    function cancel(e) { if (e.pointerId === pid) cleanup(); }
+    row.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      pid = e.pointerId; sx = e.clientX; sy = e.clientY;
+      document.addEventListener('pointermove', move); document.addEventListener('pointerup', up); document.addEventListener('pointercancel', cancel);
+      timer = setTimeout(() => start(e), e.pointerType === 'mouse' ? 150 : HOLD);
+    });
+    row.addEventListener('contextmenu', e => { if (dragActive) e.preventDefault(); });
   }
   function outlineText() {
     const W = 30, out = [];
@@ -606,6 +770,8 @@
     });
     return out.join('\n').trim();
   }
+  $('expandAllBtn').onclick = () => { state.collapsed = {}; save(); renderBrackets(); };
+  $('collapseAllBtn').onclick = () => setCollapsedAll(true);
   $('copyOutlineBtn').onclick = async () => {
     const text = outlineText();
     try { await navigator.clipboard.writeText(text); }
@@ -625,7 +791,7 @@
       el.style.transition = 'none';
     });
     el.addEventListener('pointermove', e => {
-      if (!down) return;
+      if (!down || dragActive) return;
       dx = e.clientX - sx;
       if (Math.abs(dx) > 6 && !moved) { moved = true; try { el.setPointerCapture(e.pointerId); } catch(_) {} }
       if (dx < 0) el.style.transform = 'translateX(' + Math.max(dx, -140) + 'px)';
@@ -634,7 +800,7 @@
       if (!down) return;
       down = false;
       el.style.transition = 'transform 0.2s ease';
-      if (dx < -80) { el.style.transform = 'translateX(-100%)'; setTimeout(onDelete, 150); }
+      if (dx < -80 && !dragActive) { el.style.transform = 'translateX(-100%)'; setTimeout(onDelete, 150); }
       else el.style.transform = 'translateX(0)';
     };
     el.addEventListener('pointerup', end);
@@ -944,7 +1110,7 @@
   // ---------- delete-at-source queue ----------
   const queueSheetBackdrop = $('queueSheetBackdrop');
   function renderQueue() {
-    $('queueBtn').textContent = 'To delete at source' + (state.queue.length ? ' (' + state.queue.length + ')' : '');
+    $('queueBtn').textContent = 'To delete' + (state.queue.length ? ' (' + state.queue.length + ')' : '');
     $('queueBody').innerHTML = state.queue.length ? state.queue.map((q, i) =>
       '<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #8884">' +
       '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">' + escapeHtml(q.title) + '</span>' +
