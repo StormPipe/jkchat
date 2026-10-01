@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>JK Chat Organizer</title>
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="JK Chat">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    box-sizing: border-box;
+    --bg: #F5F3EE;
+    --paper: #FFFFFF;
+    --ink: #1C1B19;
+    --ink-soft: #6B6862;
+    --line: #DEDAD1;
+    --amber: #C97A2B;
+    --amber-soft: #F1DEC4;
+    --danger: #B5443B;
+    --danger-soft: #F5DAD6;
+    --claude-tag: #C97A2B;
+    --chatgpt-tag: #3E7C6B;
+    --gemini-tag: #4A6FA5;
+    --other-tag: #8A8578;
+    --radius: 10px;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1B1A17; --paper: #242320; --ink: #F1EEE7; --ink-soft: #A6A196;
+      --line: #38352F; --amber: #E0A048; --amber-soft: #3A2E1C;
+      --danger: #E07268; --danger-soft: #3B2320;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1B1A17; --paper: #242320; --ink: #F1EEE7; --ink-soft: #A6A196;
+    --line: #38352F; --amber: #E0A048; --amber-soft: #3A2E1C;
+    --danger: #E07268; --danger-soft: #3B2320;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; }
+  body {
+    height: 100%; margin: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 15px; line-height: 1.45; -webkit-tap-highlight-color: transparent;
+  }
+  .app { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; min-height: 100%; }
+  header.top {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20;
+    background: var(--bg); padding: 18px 16px 10px; border-bottom: 1px solid var(--line);
+  }
+  h1 { font-family: "Space Grotesk", -apple-system, sans-serif; font-size: 21px; font-weight: 700; margin: 0 0 2px; letter-spacing: -0.01em; }
+  .sub { color: var(--ink-soft); font-size: 12.5px; margin: 0 0 12px; }
+  .actions-row { display: flex; gap: 8px; margin-bottom: 10px; align-items: center; flex-wrap: wrap; }
+  .btn {
+    font-family: inherit; font-size: 13.5px; font-weight: 600; border: 1px solid var(--line);
+    background: var(--paper); color: var(--ink); border-radius: var(--radius); padding: 9px 14px;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn.primary { background: var(--amber); border-color: var(--amber); color: #1C1B19; }
+  .btn.ghost { background: transparent; }
+  .btn.danger { color: var(--danger); border-color: var(--danger); background: transparent; }
+  .btn.small { padding: 6px 11px; font-size: 12.5px; }
+  .btn.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .seg button {
+    font-family: inherit; font-size: 13px; font-weight: 600; border: none; background: var(--paper);
+    color: var(--ink-soft); padding: 7px 13px; cursor: pointer;
+  }
+  .seg button.on { background: var(--ink); color: var(--bg); }
+  .spacer { flex: 1; }
+  .search {
+    width: 100%; padding: 9px 12px; border-radius: var(--radius); border: 1px solid var(--line);
+    background: var(--paper); color: var(--ink); font-size: 14px; margin-bottom: 10px;
+  }
+  .search:focus { outline: 2px solid var(--amber); outline-offset: 1px; }
+  .folders { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .folders::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: 0 0 auto; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--paper); color: var(--ink-soft); font-size: 13px; font-weight: 600;
+    cursor: pointer; white-space: nowrap;
+  }
+  .chip.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .chip .count { opacity: 0.6; margin-left: 4px; font-weight: 500; }
+  main { flex: 1; padding: 14px 16px 120px; }
+  .empty { text-align: center; color: var(--ink-soft); padding: 60px 20px; font-size: 14px; }
+  .empty strong { display: block; color: var(--ink); font-size: 16px; margin-bottom: 6px; font-family: "Space Grotesk", sans-serif; }
+  .empty .btn { margin-top: 14px; }
+
+  /* list cards */
+  .card-wrap { position: relative; margin-bottom: 8px; border-radius: var(--radius); overflow: hidden; }
+  .card-bg {
+    position: absolute; inset: 0; background: var(--danger); display: flex; align-items: center;
+    justify-content: flex-end; padding-right: 20px; color: #fff; font-weight: 700; font-size: 13px;
+  }
+  .card {
+    position: relative; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 12px 14px; touch-action: pan-y; cursor: pointer; transition: transform 0.15s ease;
+    display: flex; gap: 10px; user-select: none; -webkit-user-select: none;
+  }
+  .card.selected { border-color: var(--amber); background: var(--amber-soft); }
+  .card-body { flex: 1; min-width: 0; }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 4px; }
+  .card-title { font-weight: 600; font-size: 14.5px; line-height: 1.3; }
+  .tag { flex: 0 0 auto; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 5px; color: #fff; white-space: nowrap; }
+  .tag.claude { background: var(--claude-tag); }
+  .tag.chatgpt { background: var(--chatgpt-tag); }
+  .tag.gemini { background: var(--gemini-tag); }
+  .tag.other { background: var(--other-tag); }
+  .card-notes {
+    color: var(--ink-soft); font-size: 13px; margin: 0 0 6px; display: -webkit-box;
+    -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .card-meta { display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: var(--ink-soft); }
+  .folder-pill { background: var(--amber-soft); color: var(--amber); padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+  .card.selected .folder-pill { background: var(--paper); }
+  .check {
+    flex: 0 0 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line);
+    display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
+    color: transparent; margin-top: 1px;
+  }
+  .selected .check { background: var(--amber); border-color: var(--amber); color: #1C1B19; }
+  .open-link { font-size: 11.5px; font-weight: 700; color: var(--amber); text-decoration: none; padding: 4px 8px; margin: -4px 0 -4px 8px; border: 1px solid var(--amber); border-radius: 999px; white-space: nowrap; }
+  .open-link:active { transform: scale(0.95); }
+  .app-version { color: var(--ink-soft); font-size: 11px; margin: 0 0 4px; }
+  .more-btn { display: block; margin: 12px auto 0; }
+
+  /* bracket view */
+  .br-group { display: flex; align-items: stretch; gap: 10px; margin-bottom: 18px; }
+  .br-name {
+    flex: 0 0 auto; max-width: 30%; align-self: center; font-family: "Space Grotesk", sans-serif;
+    font-weight: 600; font-size: 15px; cursor: pointer; word-break: break-word; line-height: 1.25;
+  }
+  .br-name small { display: block; font-family: -apple-system, sans-serif; font-weight: 500; font-size: 11.5px; color: var(--ink-soft); }
+  .br-brace {
+    flex: 0 0 12px; position: relative; border: 2px solid var(--ink); border-right: none;
+    border-radius: 10px 0 0 10px; min-height: 30px;
+  }
+  .br-brace::before {
+    content: ""; position: absolute; left: -10px; top: 50%; width: 10px; height: 2px;
+    background: var(--ink); transform: translateY(-1px);
+  }
+  .br-items { flex: 1; min-width: 0; margin: 0; padding: 0; list-style: none; }
+  .br-items li {
+    display: flex; align-items: center; gap: 8px; padding: 6px 4px; font-size: 14px;
+    border-bottom: 1px dotted var(--line); cursor: pointer;
+  }
+  .br-items li:last-child { border-bottom: none; }
+  .br-items li .t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .br-items li.selected { background: var(--amber-soft); border-radius: 6px; }
+  .br-items li .tag { font-size: 9.5px; padding: 1px 5px; }
+  .br-items li .check { flex-basis: 18px; height: 18px; font-size: 11px; }
+  .br-items li.dim, .br-items .addrow { color: var(--ink-soft); font-size: 13px; }
+  .br-items .addrow { cursor: pointer; border-bottom: none; }
+  .br-group.collapsed .br-items li:not(.keep) { display: none; }
+
+  .fab {
+    position: fixed; right: 20px; bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    width: 54px; height: 54px; border-radius: 50%; background: var(--amber); color: #1C1B19;
+    border: none; font-size: 26px; font-weight: 400; box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    cursor: pointer; z-index: 30; display: flex; align-items: center; justify-content: center;
+  }
+  .fab:active { transform: scale(0.95); }
+  body.selecting .fab { display: none; }
+
+  .bulkbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 35; background: var(--paper);
+    border-top: 1px solid var(--line); padding: 10px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+    display: none; box-shadow: 0 -6px 20px rgba(0,0,0,0.12);
+  }
+  body.selecting .bulkbar { display: block; }
+  .bulkbar-inner { max-width: 720px; margin: 0 auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .bulkbar .n { font-weight: 700; font-size: 13.5px; margin-right: 4px; }
+  .bulkbar select {
+    font-family: inherit; font-size: 13.5px; font-weight: 600; padding: 8px 10px; border-radius: var(--radius);
+    border: 1px solid var(--line); background: var(--paper); color: var(--ink); max-width: 170px;
+  }
+
+  .sheet-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 40; display: none;
+    align-items: flex-end; justify-content: center;
+  }
+  .sheet-backdrop.open { display: flex; }
+  .sheet {
+    background: var(--bg); width: 100%; max-width: 640px; border-radius: 18px 18px 0 0;
+    padding: 18px 18px calc(24px + env(safe-area-inset-bottom, 0px)); max-height: 88vh;
+    overflow-y: auto; box-shadow: 0 -8px 30px rgba(0,0,0,0.2);
+  }
+  .sheet h2 { font-family: "Space Grotesk", sans-serif; font-size: 18px; margin: 0 0 14px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 5px; }
+  .field input[type=text], .field textarea, .field select {
+    width: 100%; padding: 10px 11px; border-radius: 9px; border: 1px solid var(--line);
+    background: var(--paper); color: var(--ink); font-family: inherit; font-size: 14.5px;
+  }
+  .field textarea { resize: vertical; min-height: 70px; }
+  .source-picker { display: flex; gap: 6px; flex-wrap: wrap; }
+  .source-opt {
+    padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .source-opt.sel { border-color: var(--amber); background: var(--amber-soft); color: var(--amber); }
+  .sheet-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .sheet-actions .btn { flex: 1; justify-content: center; }
+  .new-folder-row { display: flex; gap: 6px; margin-top: 8px; }
+  .new-folder-row input { flex: 1; padding: 10px 11px; border-radius: 9px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: 14.5px; }
+  .folder-list-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14px; gap: 10px; }
+  .folder-list-item .acts { display: flex; gap: 14px; }
+  .folder-list-item button { background: none; border: none; color: var(--danger); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .folder-list-item button.rn { color: var(--ink-soft); }
+  .drop {
+    border: 2px dashed var(--line); border-radius: 12px; padding: 22px 14px; text-align: center;
+    color: var(--ink-soft); font-size: 13.5px; background: var(--paper);
+  }
+  .drop.over { border-color: var(--amber); background: var(--amber-soft); }
+  .drop .btn { margin-top: 10px; }
+  .toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%) translateY(20px); background: var(--ink); color: var(--bg);
+    padding: 10px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; display: flex;
+    align-items: center; gap: 12px; opacity: 0; pointer-events: none; transition: all 0.25s ease;
+    z-index: 50; max-width: 92vw;
+  }
+  body.selecting .toast { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  .toast button { background: none; border: none; color: var(--amber); font-weight: 700; font-size: 13px; cursor: pointer; }
+  .import-help { font-size: 12px; color: var(--ink-soft); margin-top: 6px; line-height: 1.5; }
+  details.paste { margin-top: 14px; }
+  details.paste summary { font-size: 13px; font-weight: 600; color: var(--ink-soft); cursor: pointer; margin-bottom: 8px; }
+  .divider { border: none; border-top: 1px solid var(--line); margin: 16px 0 12px; }
+  .meta-line { font-size: 12px; color: var(--ink-soft); margin: -6px 0 12px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>JK Chat Organizer</h1>
+    <p class="app-version">JKChat · Version 1.2.0</p>
+    <p class="sub" id="subLine">Sort chats from every AI engine into one place</p>
+    <div class="actions-row">
+      <button class="btn primary" id="addBtn">+ Add chat</button>
+      <button class="btn" id="importBtn">Import</button>
+      <button class="btn ghost" id="folderBtn">Folders</button>
+      <button class="btn ghost" id="queueBtn">To delete at source</button>
+    </div>
+    <div class="actions-row">
+      <div class="seg" id="viewSeg">
+        <button data-view="list">List</button>
+        <button data-view="brackets">Brackets</button>
+      </div>
+      <button class="btn small" id="selectBtn">Select</button>
+      <span class="spacer"></span>
+      <button class="btn small ghost" id="copyOutlineBtn" style="display:none">Copy outline</button>
+    </div>
+    <input type="text" class="search" id="searchInput" placeholder="Search titles and notes…">
+    <div class="folders" id="folderChips"></div>
+  </header>
+  <main id="main"></main>
+</div>
+
+<button class="fab" id="fabAdd" title="Add chat">+</button>
+
+<div class="bulkbar" id="bulkbar">
+  <div class="bulkbar-inner">
+    <span class="n" id="bulkCount">0 selected</span>
+    <button class="btn small" id="bulkAll">Select all</button>
+    <select id="bulkMove"></select>
+    <button class="btn small danger" id="bulkDelete">Delete</button>
+    <span class="spacer"></span>
+    <button class="btn small primary" id="bulkDone">Done</button>
+  </div>
+</div>
+
+<!-- add / edit -->
+<div class="sheet-backdrop" id="chatSheetBackdrop">
+  <div class="sheet">
+    <h2 id="chatSheetTitle">Add a chat</h2>
+    <p class="meta-line" id="chatMeta" style="display:none"></p>
+    <div class="field">
+      <label>Title</label>
+      <input type="text" id="f_title" placeholder="e.g. Phoenix — motion sensor control">
+    </div>
+    <div class="field">
+      <label>Source</label>
+      <div class="source-picker" id="sourcePicker">
+        <div class="source-opt" data-src="claude">Claude</div>
+        <div class="source-opt" data-src="chatgpt">ChatGPT</div>
+        <div class="source-opt" data-src="gemini">Gemini</div>
+        <div class="source-opt" data-src="other">Other</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Notes / snippet</label>
+      <textarea id="f_notes" placeholder="Paste a summary, first line, or link"></textarea>
+    </div>
+    <div class="field">
+      <label>Folder</label>
+      <select id="f_folder"></select>
+    </div>
+    <div class="sheet-actions">
+      <a class="btn primary" id="openChatBtn" style="display:none;text-decoration:none" target="_blank" rel="noopener">Open chat ↗</a>
+      <button class="btn danger" id="deleteChatBtn" style="display:none">Delete</button>
+      <button class="btn ghost" id="cancelChat">Cancel</button>
+      <button class="btn primary" id="saveChat">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- delete queue -->
+<div class="sheet-backdrop" id="queueSheetBackdrop">
+  <div class="sheet">
+    <h2>To delete at source</h2>
+    <p class="import-help">Chats you removed here. They still exist in Claude / ChatGPT. Tap Open, delete it there, then tap Done.</p>
+    <div id="queueBody"></div>
+    <div class="sheet-actions"><button class="btn ghost" id="closeQueue">Close</button></div>
+  </div>
+</div>
+
+<!-- import -->
+<div class="sheet-backdrop" id="importSheetBackdrop">
+  <div class="sheet">
+    <h2>Import chats</h2>
+    <div class="drop" id="dropZone">
+      Drop export files here, or choose them from disk.<br>
+      Claude <b>conversations.json</b> or ChatGPT <b>conversations-000.json</b> (pick several at once). Re-importing a newer export adds only the new chats.<br>
+      <input type="file" id="fileInput" accept=".json,application/json" multiple style="display:none">
+      <button class="btn primary" id="chooseFiles">Choose files…</button>
+    </div>
+    <p class="import-help">Deleting a chat here only removes it from this list (it goes on the To delete at source list so you can remove the real chat), and deleted chats stay out on re-import. Also accepts a backup file saved from this app.</p>
+    <details class="paste">
+      <summary>Or paste a list of titles</summary>
+      <div class="field">
+        <textarea id="importText" style="min-height:110px" placeholder="One chat title per line"></textarea>
+      </div>
+      <div class="field">
+        <label>Tag these as</label>
+        <div class="source-picker" id="importSourcePicker">
+          <div class="source-opt sel" data-src="claude">Claude</div>
+          <div class="source-opt" data-src="chatgpt">ChatGPT</div>
+          <div class="source-opt" data-src="gemini">Gemini</div>
+          <div class="source-opt" data-src="other">Other</div>
+        </div>
+      </div>
+      <button class="btn primary" id="runImport" style="width:100%;justify-content:center">Import pasted titles</button>
+    </details>
+    <div class="sheet-actions">
+      <button class="btn ghost" id="cancelImport">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- folders -->
+<div class="sheet-backdrop" id="folderSheetBackdrop">
+  <div class="sheet">
+    <h2>Folders</h2>
+    <div id="folderListBody"></div>
+    <div class="new-folder-row">
+      <input type="text" id="newFolderInput" placeholder="New folder name">
+      <button class="btn primary" id="addFolderBtn">Add</button>
+    </div>
+    <hr class="divider">
+    <div class="field">
+      <label>Backup / move to another device</label>
+      <button class="btn" id="exportBtn">Save backup file</button>
+      <p class="import-help">Saves every chat, folder, and sort decision to a .json file. Import that file on another device to bring the sorting over. It fills in only what's missing and never overwrites folders you already set there.</p>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn ghost" id="closeFolders" style="flex:1">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <span id="toastMsg"></span>
+  <button id="toastUndo">Undo</button>
+</div>
+
+<script>
+(function(){
+  const KEY = 'jkchatorg_v2', OLD_KEY = 'jkchatorg_v1';
+  const PAGE = 200;            // list rows rendered before "Show more"
+  const BR_CAP = 60;           // bracket rows per folder before "+ N more"
+  let state = load();
+  let selectMode = false;
+  const selected = new Set();
+  let listLimit = PAGE;
+  const expanded = {};          // bracket folders showing every row
+
+  function normalize(s) {
+    s.chats = (s.chats || []).map(c => Object.assign({ ext: null, folder: null, notes: '', msgs: 0, origTitle: c.title, updatedAt: c.createdAt }, c));
+    s.folders = s.folders || [];
+    s.dismissed = s.dismissed || [];
+    s.queue = s.queue || [];
+    s.activeFolder = s.activeFolder || 'All';
+    s.view = s.view || 'list';
+    s.collapsed = s.collapsed || {};
+    return s;
+  }
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY) || localStorage.getItem(OLD_KEY);
+      if (raw) return normalize(JSON.parse(raw));
+    } catch(e) {}
+    return normalize({});
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch(e) { showToast('Could not save. Browser storage is full or blocked.'); }
+  }
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  const sourceLabels = { claude: 'Claude', chatgpt: 'ChatGPT', gemini: 'Gemini', other: 'Other' };
+  const sourceShort = { claude: 'C', chatgpt: 'G', gemini: 'Ge', other: '?' };
+  function escapeHtml(s) {
+    return (s == null ? '' : String(s)).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+  const $ = id => document.getElementById(id);
+
+  // ---------- filtering ----------
+  function matchesSearch(c) {
+    const q = $('searchInput').value.trim().toLowerCase();
+    return !q || c.title.toLowerCase().includes(q) || (c.notes || '').toLowerCase().includes(q);
+  }
+  function inActiveFolder(c) {
+    if (state.activeFolder === 'All') return true;
+    if (state.activeFolder === 'Unsorted') return !c.folder;
+    return c.folder === state.activeFolder;
+  }
+  const byRecent = (a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0);
+  function visibleChats() { return state.chats.filter(c => matchesSearch(c) && inActiveFolder(c)).sort(byRecent); }
+
+  // ---------- rendering ----------
+  function renderAll() {
+    renderHeader();
+    renderFolderChips();
+    renderBody();
+    renderFolderSelect();
+    renderBulk();
+    renderQueue();
+  }
+  function renderHeader() {
+    const n = state.chats.length, u = state.chats.filter(c => !c.folder).length;
+    $('subLine').textContent = n === 0 ? 'Sort chats from every AI engine into one place' : n + ' chats · ' + u + ' unsorted';
+    document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('on', b.dataset.view === state.view));
+    $('selectBtn').classList.toggle('on', selectMode);
+    $('selectBtn').textContent = selectMode ? 'Selecting' : 'Select';
+    $('copyOutlineBtn').style.display = state.view === 'brackets' ? '' : 'none';
+    document.body.classList.toggle('selecting', selectMode);
+  }
+  function renderFolderChips() {
+    const counts = { All: state.chats.length, Unsorted: state.chats.filter(c => !c.folder).length };
+    state.folders.forEach(f => counts[f] = state.chats.filter(c => c.folder === f).length);
+    const el = $('folderChips');
+    el.innerHTML = '';
+    ['All', 'Unsorted', ...state.folders].forEach(f => {
+      const chip = document.createElement('div');
+      chip.className = 'chip' + (state.activeFolder === f ? ' active' : '');
+      chip.innerHTML = escapeHtml(f) + '<span class="count">' + (counts[f] || 0) + '</span>';
+      chip.onclick = () => { state.activeFolder = f; listLimit = PAGE; save(); renderAll(); };
+      el.appendChild(chip);
+    });
+  }
+  function emptyState(main) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    if (state.chats.length === 0) {
+      empty.innerHTML = '<strong>No chats yet</strong>Import your Claude export (conversations.json) to start sorting, or add a chat by hand.<br><button class="btn primary" id="emptyImport">Import export file</button>';
+      main.appendChild(empty);
+      $('emptyImport').onclick = () => $('importSheetBackdrop').classList.add('open');
+    } else {
+      empty.innerHTML = '<strong>Nothing here</strong>Try a different folder or search.';
+      main.appendChild(empty);
+    }
+  }
+  function renderBody() { state.view === 'brackets' ? renderBrackets() : renderList(); }
+
+  function renderList() {
+    const main = $('main');
+    const list = visibleChats();
+    main.innerHTML = '';
+    if (list.length === 0) { emptyState(main); return; }
+    list.slice(0, listLimit).forEach(c => main.appendChild(buildCard(c)));
+    if (list.length > listLimit) {
+      const more = document.createElement('button');
+      more.className = 'btn more-btn';
+      more.textContent = 'Show more (' + (list.length - listLimit) + ' left)';
+      more.onclick = () => { listLimit += PAGE; renderList(); };
+      main.appendChild(more);
+    }
+  }
+  function buildCard(c) {
+    const wrap = document.createElement('div');
+    wrap.className = 'card-wrap';
+    const bg = document.createElement('div');
+    bg.className = 'card-bg';
+    bg.textContent = 'Delete';
+    wrap.appendChild(bg);
+    const card = document.createElement('div');
+    card.className = 'card' + (selected.has(c.id) ? ' selected' : '');
+    card.innerHTML =
+      (selectMode ? '<div class="check">✓</div>' : '') +
+      '<div class="card-body">' +
+        '<div class="card-top"><div class="card-title">' + escapeHtml(c.title) + '</div>' +
+        '<div style="display:flex;align-items:center">' + (chatUrl(c) ? '<a class="open-link" href="' + escapeHtml(chatUrl(c)) + '" target="_blank" rel="noopener">Open ↗</a>' : '') +
+        '<div class="tag ' + c.source + '" style="margin-left:8px">' + (sourceLabels[c.source] || 'Other') + '</div></div></div>' +
+        (c.notes ? '<p class="card-notes">' + escapeHtml(c.notes) + '</p>' : '') +
+        '<div class="card-meta"><span>' + new Date(c.createdAt).toLocaleDateString() +
+        (c.msgs ? ' · ' + c.msgs + ' msgs' : '') + '</span>' +
+        (c.folder ? '<span class="folder-pill">' + escapeHtml(c.folder) + '</span>' : '<span class="folder-pill" style="opacity:.6">Unsorted</span>') +
+        '</div></div>';
+    card.addEventListener('click', e => { if (e.target.closest('.open-link')) return; rowClick(c); });
+    wrap.appendChild(card);
+    attachSwipe(card, () => deleteChats([c.id]));
+    return wrap;
+  }
+  // Live chat URL: from the export id kept in c.ext (claude:<uuid>, chatgpt:<id>),
+  // else the first URL pasted into notes. Gemini exports carry no id.
+  function chatUrl(c) {
+    const m = /^(claude|chatgpt):([0-9a-f-]{20,})$/i.exec(c.ext || '');
+    if (m) return m[1] === 'claude' ? 'https://claude.ai/chat/' + m[2] : 'https://chatgpt.com/c/' + m[2];
+    const u = /https?:\/\/[^\s)]+/.exec(c.notes || '');
+    return u ? u[0] : null;
+  }
+  function rowClick(c) {
+    if (selectMode) { toggleSel(c.id); return; }
+    openChatSheet(c);
+  }
+
+  // ---------- brackets (Warnier-Orr) ----------
+  function bracketGroups() {
+    const chats = state.chats.filter(matchesSearch).sort(byRecent);
+    const groups = [{ name: 'Unsorted', key: '', chats: chats.filter(c => !c.folder) }];
+    state.folders.forEach(f => groups.push({ name: f, key: f, chats: chats.filter(c => c.folder === f) }));
+    if (state.activeFolder !== 'All') return groups.filter(g => g.name === state.activeFolder);
+    return groups;
+  }
+  function renderBrackets() {
+    const main = $('main');
+    main.innerHTML = '';
+    if (state.chats.length === 0) { emptyState(main); return; }
+    const searching = $('searchInput').value.trim() !== '';
+    bracketGroups().forEach(g => {
+      if (searching && g.chats.length === 0) return;
+      const collapsed = !!state.collapsed[g.name] && !searching;
+      const sec = document.createElement('section');
+      sec.className = 'br-group' + (collapsed ? ' collapsed' : '');
+      const name = document.createElement('div');
+      name.className = 'br-name';
+      name.innerHTML = (collapsed ? '▸ ' : '') + escapeHtml(g.name) + '<small>' + g.chats.length + '</small>';
+      name.title = 'Tap to collapse or expand';
+      name.onclick = () => { state.collapsed[g.name] = !state.collapsed[g.name]; save(); renderBrackets(); };
+      sec.appendChild(name);
+      const brace = document.createElement('div');
+      brace.className = 'br-brace';
+      sec.appendChild(brace);
+      const ul = document.createElement('ul');
+      ul.className = 'br-items';
+      const cap = expanded[g.name] ? Infinity : BR_CAP;
+      g.chats.slice(0, cap).forEach(c => {
+        const li = document.createElement('li');
+        li.className = selected.has(c.id) ? 'selected' : '';
+        li.innerHTML = (selectMode ? '<span class="check">✓</span>' : '') +
+          '<span class="t">' + escapeHtml(c.title) + '</span>' +
+          '<span class="tag ' + c.source + '">' + (sourceShort[c.source] || '?') + '</span>';
+        li.onclick = () => rowClick(c);
+        ul.appendChild(li);
+      });
+      if (g.chats.length > cap) {
+        const more = document.createElement('li');
+        more.className = 'addrow';
+        more.textContent = '+ ' + (g.chats.length - cap) + ' more';
+        more.onclick = () => { expanded[g.name] = true; renderBrackets(); };
+        ul.appendChild(more);
+      }
+      if (g.chats.length === 0) {
+        const none = document.createElement('li');
+        none.className = 'dim keep';
+        none.textContent = 'empty';
+        ul.appendChild(none);
+      }
+      const add = document.createElement('li');
+      add.className = 'addrow keep';
+      add.textContent = '+ add chat';
+      add.onclick = () => openChatSheet(null, g.key);
+      ul.appendChild(add);
+      sec.appendChild(ul);
+      main.appendChild(sec);
+    });
+    if (!main.children.length) emptyState(main);
+  }
+  function outlineText() {
+    const W = 30, out = [];
+    const clip = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
+    bracketGroups().forEach(g => {
+      out.push(clip(g.name, W) + ' (' + g.chats.length + ')');
+      g.chats.forEach((c, i) => out.push((i === g.chats.length - 1 ? '└─ ' : '├─ ') + clip(c.title, W - 3)));
+      out.push('');
+    });
+    return out.join('\n').trim();
+  }
+  $('copyOutlineBtn').onclick = async () => {
+    const text = outlineText();
+    try { await navigator.clipboard.writeText(text); }
+    catch(e) {
+      const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta);
+      ta.select(); try { document.execCommand('copy'); } catch(_) {} ta.remove();
+    }
+    showToast('Outline copied');
+  };
+
+  // ---------- swipe (touch and mouse drag) ----------
+  function attachSwipe(el, onDelete) {
+    let sx = 0, dx = 0, down = false, moved = false;
+    el.addEventListener('pointerdown', e => {
+      if (selectMode || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      sx = e.clientX; dx = 0; down = true; moved = false;
+      el.style.transition = 'none';
+    });
+    el.addEventListener('pointermove', e => {
+      if (!down) return;
+      dx = e.clientX - sx;
+      if (Math.abs(dx) > 6 && !moved) { moved = true; try { el.setPointerCapture(e.pointerId); } catch(_) {} }
+      if (dx < 0) el.style.transform = 'translateX(' + Math.max(dx, -140) + 'px)';
+    });
+    const end = () => {
+      if (!down) return;
+      down = false;
+      el.style.transition = 'transform 0.2s ease';
+      if (dx < -80) { el.style.transform = 'translateX(-100%)'; setTimeout(onDelete, 150); }
+      else el.style.transform = 'translateX(0)';
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+    el.addEventListener('click', e => { if (moved) { e.stopImmediatePropagation(); e.preventDefault(); moved = false; } }, true);
+  }
+
+  // ---------- selection / bulk ----------
+  function toggleSel(id) {
+    selected.has(id) ? selected.delete(id) : selected.add(id);
+    renderBody(); renderBulk();
+  }
+  function renderBulk() {
+    $('bulkCount').textContent = selected.size + ' selected';
+    const sel = $('bulkMove');
+    sel.innerHTML = '<option value="">Move to…</option><option value="__unsorted">Unsorted</option>' +
+      state.folders.map(f => '<option value="' + escapeHtml(f) + '">' + escapeHtml(f) + '</option>').join('') +
+      '<option value="__new">New folder…</option>';
+    sel.value = '';
+    const visible = visibleChats();
+    const allSel = visible.length > 0 && visible.every(c => selected.has(c.id));
+    $('bulkAll').textContent = allSel ? 'Clear' : 'Select all';
+  }
+  function setSelectMode(on) {
+    selectMode = on;
+    if (!on) selected.clear();
+    renderAll();
+  }
+  $('selectBtn').onclick = () => setSelectMode(!selectMode);
+  $('bulkDone').onclick = () => setSelectMode(false);
+  $('bulkAll').onclick = () => {
+    const visible = state.view === 'brackets'
+      ? state.chats.filter(c => matchesSearch(c) && inActiveFolder(c))
+      : visibleChats();
+    const allSel = visible.length > 0 && visible.every(c => selected.has(c.id));
+    visible.forEach(c => allSel ? selected.delete(c.id) : selected.add(c.id));
+    renderBody(); renderBulk();
+  };
+  $('bulkMove').onchange = () => {
+    let v = $('bulkMove').value;
+    if (!v || selected.size === 0) { $('bulkMove').value = ''; return; }
+    if (v === '__new') {
+      const name = (prompt('New folder name') || '').trim();
+      if (!name) { $('bulkMove').value = ''; return; }
+      if (!state.folders.includes(name)) state.folders.push(name);
+      v = name;
+    }
+    const target = v === '__unsorted' ? null : v;
+    const n = selected.size;
+    state.chats.forEach(c => { if (selected.has(c.id)) c.folder = target; });
+    selected.clear();
+    save(); renderAll();
+    showToast(n + ' moved to ' + (target || 'Unsorted'));
+  };
+  $('bulkDelete').onclick = () => { if (selected.size) deleteChats([...selected]); };
+
+  // ---------- delete + undo ----------
+  let undoStack = null, toastTimer = null;
+  function deleteChats(ids) {
+    const set = new Set(ids);
+    const removed = [];
+    state.chats.forEach((c, i) => { if (set.has(c.id)) removed.push({ chat: c, index: i }); });
+    if (!removed.length) return;
+    state.chats = state.chats.filter(c => !set.has(c.id));
+    removed.forEach(r => { const u = chatUrl(r.chat); if (u && !state.queue.some(q => q.url === u)) state.queue.push({ title: r.chat.title, url: u }); });
+    removed.forEach(r => { if (r.chat.ext && !state.dismissed.includes(r.chat.ext)) state.dismissed.push(r.chat.ext); });
+    ids.forEach(id => selected.delete(id));
+    save(); renderAll();
+    undoStack = removed;
+    showToast(removed.length === 1 ? 'Chat deleted' : removed.length + ' chats deleted', true);
+  }
+  function showToast(msg, withUndo) {
+    $('toastMsg').textContent = msg;
+    $('toastUndo').style.display = withUndo ? '' : 'none';
+    $('toast').classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => $('toast').classList.remove('show'), withUndo ? 6000 : 4000);
+  }
+  $('toastUndo').onclick = () => {
+    if (undoStack) {
+      undoStack.slice().sort((a, b) => a.index - b.index).forEach(r => {
+        state.chats.splice(Math.min(r.index, state.chats.length), 0, r.chat);
+        if (r.chat.ext) state.dismissed = state.dismissed.filter(x => x !== r.chat.ext);
+        const u = chatUrl(r.chat); state.queue = state.queue.filter(q => q.url !== u);
+      });
+      undoStack = null;
+      save(); renderAll();
+    }
+    $('toast').classList.remove('show');
+  };
+
+  // ---------- add / edit sheet ----------
+  const chatSheetBackdrop = $('chatSheetBackdrop');
+  let editingId = null, selectedSource = 'claude';
+  function openChatSheet(chat, presetFolder) {
+    editingId = chat ? chat.id : null;
+    $('chatSheetTitle').textContent = chat ? 'Edit chat' : 'Add a chat';
+    $('f_title').value = chat ? chat.title : '';
+    $('f_notes').value = chat ? (chat.notes || '') : '';
+    selectedSource = chat ? chat.source : 'claude';
+    updateSourcePicker();
+    renderFolderSelect();
+    $('f_folder').value = chat ? (chat.folder || '') : (presetFolder || '');
+    $('deleteChatBtn').style.display = chat ? '' : 'none';
+    const url = chat ? chatUrl(chat) : null;
+    $('openChatBtn').style.display = url ? '' : 'none';
+    if (url) $('openChatBtn').href = url;
+    const meta = $('chatMeta');
+    if (chat && chat.ext) {
+      meta.style.display = '';
+      meta.textContent = 'Imported from ' + (sourceLabels[chat.source] || 'export') + ' · ' + new Date(chat.createdAt).toLocaleDateString() + (chat.msgs ? ' · ' + chat.msgs + ' messages' : '');
+    } else meta.style.display = 'none';
+    chatSheetBackdrop.classList.add('open');
+  }
+  function closeChatSheet() { chatSheetBackdrop.classList.remove('open'); }
+  $('addBtn').onclick = () => openChatSheet(null, state.activeFolder !== 'All' && state.activeFolder !== 'Unsorted' ? state.activeFolder : '');
+  $('fabAdd').onclick = () => $('addBtn').onclick();
+  $('cancelChat').onclick = closeChatSheet;
+  chatSheetBackdrop.onclick = e => { if (e.target === chatSheetBackdrop) closeChatSheet(); };
+  $('deleteChatBtn').onclick = () => { const id = editingId; closeChatSheet(); if (id) deleteChats([id]); };
+  $('sourcePicker').addEventListener('click', e => {
+    const opt = e.target.closest('.source-opt');
+    if (!opt) return;
+    selectedSource = opt.dataset.src; updateSourcePicker();
+  });
+  function updateSourcePicker() {
+    document.querySelectorAll('#sourcePicker .source-opt').forEach(o => o.classList.toggle('sel', o.dataset.src === selectedSource));
+  }
+  $('saveChat').onclick = () => {
+    const title = $('f_title').value.trim();
+    if (!title) { $('f_title').focus(); return; }
+    const notes = $('f_notes').value.trim();
+    const folder = $('f_folder').value || null;
+    if (editingId) {
+      const c = state.chats.find(c => c.id === editingId);
+      if (c) { c.title = title; c.notes = notes; c.source = selectedSource; c.folder = folder; }
+    } else {
+      const now = Date.now();
+      state.chats.push({ id: uid(), ext: null, title, origTitle: title, notes, source: selectedSource, folder, createdAt: now, updatedAt: now, msgs: 0 });
+    }
+    save(); closeChatSheet(); renderAll();
+  };
+  function renderFolderSelect() {
+    const sel = $('f_folder');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">Unsorted</option>' + state.folders.map(f => '<option value="' + escapeHtml(f) + '">' + escapeHtml(f) + '</option>').join('');
+    sel.value = current;
+  }
+
+  // ---------- import ----------
+  const importSheetBackdrop = $('importSheetBackdrop');
+  let importSource = 'claude';
+  $('importBtn').onclick = () => importSheetBackdrop.classList.add('open');
+  $('cancelImport').onclick = () => importSheetBackdrop.classList.remove('open');
+  importSheetBackdrop.onclick = e => { if (e.target === importSheetBackdrop) importSheetBackdrop.classList.remove('open'); };
+  $('importSourcePicker').addEventListener('click', e => {
+    const opt = e.target.closest('.source-opt');
+    if (!opt) return;
+    importSource = opt.dataset.src;
+    document.querySelectorAll('#importSourcePicker .source-opt').forEach(o => o.classList.toggle('sel', o.dataset.src === importSource));
+  });
+  $('chooseFiles').onclick = () => $('fileInput').click();
+  $('fileInput').onchange = e => { importFiles([...e.target.files]); e.target.value = ''; };
+  const drop = $('dropZone');
+  ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => importFiles([...e.dataTransfer.files]));
+
+  function readFile(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = () => reject(r.error);
+      r.readAsText(file);
+    });
+  }
+  async function importFiles(files) {
+    if (!files.length) return;
+    const totals = { added: 0, existing: 0, skipped: 0, updated: 0, bad: [] };
+    for (const f of files) {
+      try {
+        const data = JSON.parse(await readFile(f));
+        const r = importData(data);
+        if (r === null) { totals.bad.push(f.name); continue; }
+        totals.added += r.added; totals.existing += r.existing || 0; totals.skipped += r.skipped || 0; totals.updated += r.updated || 0;
+      } catch(e) { totals.bad.push(f.name); }
+    }
+    save(); renderAll();
+    importSheetBackdrop.classList.remove('open');
+    let msg = totals.added + ' new';
+    if (totals.existing) msg += ' · ' + totals.existing + ' already here';
+    if (totals.updated) msg += ' · ' + totals.updated + ' folders restored';
+    if (totals.skipped) msg += ' · ' + totals.skipped + ' skipped (deleted earlier)';
+    if (totals.bad.length) msg += ' · could not read ' + totals.bad.join(', ');
+    showToast(msg);
+  }
+
+  function extractItems(data) {
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.conversations)) return data.conversations;
+    return null;
+  }
+  function importData(data) {
+    if (data && data.jkchat === 1) return mergeBackup(data);
+    const items = extractItems(data);
+    if (!items) return null;
+    const list = items.map(parseItem).filter(Boolean);
+    return mergeIncoming(list);
+  }
+  function clip(s, n) { s = (s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+  function parseItem(it) {
+    if (!it || typeof it !== 'object') return null;
+    if (it.mapping && typeof it.mapping === 'object') return parseChatGPT(it);
+    if (it.uuid) return parseClaude(it);
+    const title = it.title || it.name;
+    if (title) return { ext: importSource + ':t:' + String(title).toLowerCase(), title: String(title), notes: '', source: importSource, createdAt: Date.now(), updatedAt: Date.now(), msgs: 0 };
+    return null;
+  }
+  function parseClaude(it) {
+    const msgs = Array.isArray(it.chat_messages) ? it.chat_messages : [];
+    const firstHuman = msgs.find(m => m.sender === 'human');
+    let text = '';
+    if (firstHuman) text = firstHuman.text || (Array.isArray(firstHuman.content) ? firstHuman.content.filter(p => p.type === 'text').map(p => p.text).join(' ') : '');
+    const created = Date.parse(it.created_at) || Date.now();
+    return {
+      ext: 'claude:' + it.uuid,
+      title: (it.name || '').trim() || clip(text, 60) || 'Untitled chat',
+      notes: clip(typeof it.summary === 'string' && it.summary ? it.summary : text, 220),
+      source: 'claude', createdAt: created, updatedAt: Date.parse(it.updated_at) || created, msgs: msgs.length
+    };
+  }
+  function parseChatGPT(it) {
+    const users = Object.values(it.mapping).map(n => n && n.message).filter(m => m && m.author && m.author.role === 'user' && m.content && Array.isArray(m.content.parts))
+      .sort((a, b) => (a.create_time || 0) - (b.create_time || 0));
+    const text = users.length ? users[0].content.parts.filter(p => typeof p === 'string').join(' ') : '';
+    const id = it.conversation_id || it.id;
+    if (!id) return null;
+    const created = it.create_time ? it.create_time * 1000 : Date.now();
+    return {
+      ext: 'chatgpt:' + id,
+      title: (it.title || '').trim() || clip(text, 60) || 'Untitled chat',
+      notes: clip(text, 220),
+      source: 'chatgpt', createdAt: created, updatedAt: it.update_time ? it.update_time * 1000 : created,
+      msgs: Object.values(it.mapping).filter(n => n && n.message && n.message.author && (n.message.author.role === 'user' || n.message.author.role === 'assistant')).length
+    };
+  }
+  function mergeIncoming(list) {
+    const byExt = new Map(state.chats.filter(c => c.ext).map(c => [c.ext, c]));
+    const dismissed = new Set(state.dismissed);
+    let added = 0, existing = 0, skipped = 0;
+    for (const n of list) {
+      const cur = byExt.get(n.ext);
+      if (cur) {
+        existing++;
+        cur.updatedAt = Math.max(cur.updatedAt || 0, n.updatedAt || 0);
+        cur.msgs = n.msgs || cur.msgs;
+        if (cur.title === cur.origTitle) cur.title = n.title;   // keep titles the user renamed
+        cur.origTitle = n.title;
+        if (!cur.notes && n.notes) cur.notes = n.notes;
+        continue;
+      }
+      if (dismissed.has(n.ext)) { skipped++; continue; }
+      const c = Object.assign({ id: uid(), folder: null }, n, { origTitle: n.title });
+      state.chats.push(c); byExt.set(n.ext, c); added++;
+    }
+    return { added, existing, skipped };
+  }
+  function mergeBackup(b) {
+    (b.folders || []).forEach(f => { if (!state.folders.includes(f)) state.folders.push(f); });
+    (b.dismissed || []).forEach(x => { if (!state.dismissed.includes(x)) state.dismissed.push(x); });
+    (b.queue || []).forEach(q => { if (!state.queue.some(y => y.url === q.url)) state.queue.push(q); });
+    const byExt = new Map(state.chats.filter(c => c.ext).map(c => [c.ext, c]));
+    const key = c => c.title + '|' + c.createdAt;
+    const manual = new Set(state.chats.filter(c => !c.ext).map(key));
+    let added = 0, updated = 0;
+    for (const n of (b.chats || [])) {
+      if (n.folder && !state.folders.includes(n.folder)) state.folders.push(n.folder);
+      const cur = n.ext ? byExt.get(n.ext) : null;
+      if (cur) { if (!cur.folder && n.folder) { cur.folder = n.folder; updated++; } continue; }
+      if (!n.ext && manual.has(key(n))) continue;
+      if (n.ext && state.dismissed.includes(n.ext)) continue;
+      state.chats.push(Object.assign({}, n, { id: uid() })); added++;
+    }
+    return { added, updated };
+  }
+  $('runImport').onclick = () => {
+    const lines = $('importText').value.split('\n').map(s => s.trim()).filter(Boolean);
+    if (!lines.length) return;
+    const r = mergeIncoming(lines.map(t => parseItem({ title: t })));
+    $('importText').value = '';
+    save(); renderAll();
+    importSheetBackdrop.classList.remove('open');
+    showToast(r.added + ' chat' + (r.added === 1 ? '' : 's') + ' imported to Unsorted');
+  };
+
+  // ---------- delete-at-source queue ----------
+  const queueSheetBackdrop = $('queueSheetBackdrop');
+  function renderQueue() {
+    $('queueBtn').textContent = 'To delete at source' + (state.queue.length ? ' (' + state.queue.length + ')' : '');
+    $('queueBody').innerHTML = state.queue.length ? state.queue.map((q, i) =>
+      '<div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #8884">' +
+      '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">' + escapeHtml(q.title) + '</span>' +
+      '<a class="btn small primary" style="text-decoration:none" target="_blank" rel="noopener" href="' + escapeHtml(q.url) + '">Open ↗</a>' +
+      '<button class="btn small" data-q="' + i + '">Done</button></div>').join('') : '<p class="import-help">Nothing waiting.</p>';
+    $('queueBody').querySelectorAll('[data-q]').forEach(b => b.onclick = () => { state.queue.splice(+b.dataset.q, 1); save(); renderQueue(); });
+  }
+  $('queueBtn').onclick = () => { renderQueue(); queueSheetBackdrop.classList.add('open'); };
+  $('closeQueue').onclick = () => queueSheetBackdrop.classList.remove('open');
+  queueSheetBackdrop.onclick = e => { if (e.target === queueSheetBackdrop) queueSheetBackdrop.classList.remove('open'); };
+
+  // ---------- folders sheet ----------
+  const folderSheetBackdrop = $('folderSheetBackdrop');
+  $('folderBtn').onclick = () => { renderFolderListBody(); folderSheetBackdrop.classList.add('open'); };
+  $('closeFolders').onclick = () => folderSheetBackdrop.classList.remove('open');
+  folderSheetBackdrop.onclick = e => { if (e.target === folderSheetBackdrop) folderSheetBackdrop.classList.remove('open'); };
+  function renderFolderListBody() {
+    const body = $('folderListBody');
+    if (state.folders.length === 0) { body.innerHTML = '<p class="import-help">No folders yet. Add one below.</p>'; return; }
+    body.innerHTML = '';
+    state.folders.forEach((f, i) => {
+      const n = state.chats.filter(c => c.folder === f).length;
+      const row = document.createElement('div');
+      row.className = 'folder-list-item';
+      row.innerHTML = '<span>' + escapeHtml(f) + ' <span style="color:var(--ink-soft)">(' + n + ')</span></span><span class="acts"><button class="rn">Rename</button><button class="rm">Remove</button></span>';
+      row.querySelector('.rn').onclick = () => {
+        const name = (prompt('Rename folder', f) || '').trim();
+        if (!name || name === f) return;
+        if (state.folders.includes(name)) { showToast('That folder already exists'); return; }
+        state.folders[i] = name;
+        state.chats.forEach(c => { if (c.folder === f) c.folder = name; });
+        if (state.activeFolder === f) state.activeFolder = name;
+        if (state.collapsed[f] !== undefined) { state.collapsed[name] = state.collapsed[f]; delete state.collapsed[f]; }
+        save(); renderFolderListBody(); renderAll();
+      };
+      row.querySelector('.rm').onclick = () => {
+        if (n > 0 && !confirm('Remove "' + f + '"? Its ' + n + ' chats move to Unsorted.')) return;
+        state.folders = state.folders.filter(x => x !== f);
+        state.chats.forEach(c => { if (c.folder === f) c.folder = null; });
+        if (state.activeFolder === f) state.activeFolder = 'All';
+        save(); renderFolderListBody(); renderAll();
+      };
+      body.appendChild(row);
+    });
+  }
+  $('addFolderBtn').onclick = () => {
+    const input = $('newFolderInput');
+    const name = input.value.trim();
+    if (!name || state.folders.includes(name) || name === 'All' || name === 'Unsorted') return;
+    state.folders.push(name);
+    input.value = '';
+    save(); renderFolderListBody(); renderAll();
+  };
+  $('newFolderInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('addFolderBtn').click(); });
+
+  $('exportBtn').onclick = () => {
+    const payload = { jkchat: 1, exportedAt: new Date().toISOString(), folders: state.folders, dismissed: state.dismissed, queue: state.queue, chats: state.chats };
+    const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'jkchat-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    showToast('Backup saved');
+  };
+
+  // ---------- view + search ----------
+  $('viewSeg').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    state.view = b.dataset.view; save(); renderAll();
+  });
+  $('searchInput').addEventListener('input', () => { listLimit = PAGE; renderBody(); renderBulk(); });
+
+  // Esc closes any open sheet or leaves select mode
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const open = document.querySelector('.sheet-backdrop.open');
+    if (open) open.classList.remove('open');
+    else if (selectMode) setSelectMode(false);
+  });
+
+  renderAll();
+})();
+</script>
+</body>
+</html>
