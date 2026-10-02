@@ -78,6 +78,16 @@
     width: 100%; padding: 7px 12px; border-radius: var(--radius); border: 1px solid var(--line);
     background: var(--paper); color: var(--ink); font-size: 14px; margin-bottom: 6px;
   }
+  .searchwrap { position: relative; }
+  .searchwrap .search { padding-right: 36px; }
+  .search-x { position: absolute; right: 4px; top: 0; height: calc(100% - 6px); width: 32px; border: none; background: none; color: var(--ink-soft); font-size: 18px; cursor: pointer; display: none; }
+  .searchwrap.has .search-x { display: block; }
+  .review { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 95; background: var(--ink); color: var(--bg); border-radius: 14px; padding: 10px 12px; display: none; align-items: center; gap: 10px; max-width: calc(100vw - 24px); box-shadow: 0 6px 20px rgba(0,0,0,.35); font-size: 14px; }
+  .review.show { display: flex; }
+  .review .rt { min-width: 0; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .review button { font-family: inherit; font-size: 14px; font-weight: 700; border: none; border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+  .review .keep { background: var(--paper); color: var(--ink); }
+  .review .del { background: #C0392B; color: #fff; }
   .search:focus { outline: 2px solid var(--amber); outline-offset: 1px; }
   .folders { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
   .folders::-webkit-scrollbar { display: none; }
@@ -262,7 +272,7 @@
       <h1>JK Chat Organizer</h1>
       <span class="sub" id="subLine">Sort chats from every AI engine into one place</span>
     </div>
-    <p class="app-version" id="verLine">JKChat · Version 1.5.2</p>
+    <p class="app-version" id="verLine">JKChat · Version 1.6.0</p>
     <div class="actions-row">
       <button class="btn primary small" id="addBtn">+ Add</button>
       <button class="btn small" id="importBtn">Import</button>
@@ -281,7 +291,7 @@
     </div>
   </header>
   <div class="stick">
-    <input type="text" class="search" id="searchInput" placeholder="Search titles and notes…">
+    <div class="searchwrap" id="searchWrap"><input type="text" class="search" id="searchInput" placeholder="Search titles and notes…"><button class="search-x" id="searchX" aria-label="Clear search">✕</button></div>
     <div class="folders" id="folderChips"></div>
   </div>
   <main id="main"></main>
@@ -404,6 +414,7 @@
   </div>
 </div>
 
+<div class="review" id="reviewBar"><span class="rt" id="reviewTitle"></span><button class="keep" id="reviewKeep">Keep</button><button class="del" id="reviewDel">Delete</button></div>
 <div class="toast" id="toast">
   <span id="toastMsg"></span>
   <button id="toastUndo">Undo</button>
@@ -578,7 +589,23 @@
     attachDrag(card, wrap, c);
     return wrap;
   }
-  const APP_VERSION = '1.5.2';
+  // After Open, coming back to this page asks Keep / Delete for that chat, so deciding is one tap.
+  let reviewId = null;
+  try { reviewId = sessionStorage.getItem('jkReview'); } catch (_) {}
+  function hideReview() { reviewId = null; try { sessionStorage.removeItem('jkReview'); } catch (_) {} $('reviewBar').classList.remove('show'); }
+  function showReview() {
+    if (!reviewId) return;
+    const c = state.chats.find(x => x.id === reviewId);
+    if (!c) { hideReview(); return; }
+    $('reviewTitle').textContent = c.title;
+    $('reviewBar').classList.add('show');
+  }
+  $('reviewKeep').onclick = hideReview;
+  $('reviewDel').onclick = () => { const id = reviewId; hideReview(); if (id) deleteChats([id]); };
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) showReview(); });
+  window.addEventListener('pageshow', showReview);
+  window.addEventListener('focus', showReview);
+  const APP_VERSION = '1.6.0';
   // Where is this page running? Home Screen apps and file previews can't open signed-in Safari links.
   function runMode() {
     if (navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)) return { label: 'Home Screen app', linksOk: false };
@@ -591,6 +618,10 @@
     if (!a || !(a.classList.contains('open-link') || a.dataset.open || a.id === 'openChatBtn' || a.closest('#queueBody'))) return;
     const url = a.href;
     try { navigator.clipboard && navigator.clipboard.writeText(url); } catch (_) {}
+    if (!a.closest('#queueBody')) {
+      const oc = state.chats.find(c => chatUrl(c) === a.getAttribute('href'));
+      if (oc) { reviewId = oc.id; try { sessionStorage.setItem('jkReview', oc.id); } catch (_) {} }
+    }
     if (!runMode().linksOk) {
       e.preventDefault();
       // Home Screen app: x-safari-https:// hands the URL to real Safari (signed in), which then offers the app via its universal link.
@@ -658,6 +689,7 @@
         if (e.target.closest('.more')) { openChatSheet(null, g.key); return; }
         state.collapsed[g.name] = !state.collapsed[g.name]; save(); renderBrackets();
       };
+      if (g.key) attachDrag(head, node, null, g.key);
       node.appendChild(head);
       const ul = document.createElement('ul');
       ul.className = 'tr-items';
@@ -732,7 +764,7 @@
   let dragActive = false;
   // iOS only honours preventDefault on touchmove if the listener is registered up front and non-passive
   document.addEventListener('touchmove', e => { if (dragActive) e.preventDefault(); }, { passive: false });
-  function attachDrag(row, node, chat) {
+  function attachDrag(row, node, chat, folder) {
     let timer = null, sx = 0, sy = 0, ghost = null, hot = null, raf = 0, lastY = 0, pid = null;
     const HOLD = 320, SLOP = 9;
     const dropTarget = (x, y) => {
@@ -761,8 +793,8 @@
     const start = e => {
       dragActive = true; document.body.classList.add('dragging'); node.classList.add('dragsrc');
       ghost = document.createElement('div'); ghost.className = 'drag-ghost';
-      const many = selected.has(chat.id) && selected.size > 1;
-      ghost.textContent = many ? selected.size + ' chats' : chat.title;
+      const many = chat && selected.has(chat.id) && selected.size > 1;
+      ghost.textContent = folder ? folder : many ? selected.size + ' chats' : chat.title;
       document.body.appendChild(ghost);
       place(sx, sy); raf = requestAnimationFrame(scrollLoop);
       row.addEventListener('click', swallow, { capture: true, once: true });
@@ -778,7 +810,15 @@
       if (e.pointerId !== pid) return;
       const was = dragActive, t = was ? dropTarget(e.clientX, e.clientY) : null;
       cleanup();
-      if (was && t) {
+      if (was && t && folder) {
+        const key = t.dataset.drop;
+        if (key !== folder) {
+          state.folders = state.folders.filter(f => f !== folder);
+          const at = key ? state.folders.indexOf(key) : 0;
+          state.folders.splice(at < 0 ? state.folders.length : at, 0, folder);
+          save(); renderAll(); showToast('Moved folder ' + folder);
+        }
+      } else if (was && t) {
         const ids = selected.has(chat.id) && selected.size > 1 ? [...selected] : [chat.id];
         const key = t.dataset.drop;
         if (!(ids.length === 1 && (chat.folder || '') === key)) moveChats(ids, key);
@@ -1226,7 +1266,9 @@
     if (!b) return;
     state.view = b.dataset.view; save(); renderAll();
   });
-  $('searchInput').addEventListener('input', () => { listLimit = PAGE; renderBody(); renderBulk(); });
+  const syncSearchX = () => $('searchWrap').classList.toggle('has', $('searchInput').value !== '');
+  $('searchInput').addEventListener('input', () => { syncSearchX(); listLimit = PAGE; renderBody(); renderBulk(); });
+  $('searchX').onclick = () => { $('searchInput').value = ''; syncSearchX(); listLimit = PAGE; renderBody(); renderBulk(); $('searchInput').focus(); };
 
   // Esc closes any open sheet or leaves select mode
   document.addEventListener('keydown', e => {
