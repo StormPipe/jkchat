@@ -262,7 +262,7 @@
       <h1>JK Chat Organizer</h1>
       <span class="sub" id="subLine">Sort chats from every AI engine into one place</span>
     </div>
-    <p class="app-version" id="verLine">JKChat · Version 1.5.1</p>
+    <p class="app-version" id="verLine">JKChat · Version 1.5.2</p>
     <div class="actions-row">
       <button class="btn primary small" id="addBtn">+ Add</button>
       <button class="btn small" id="importBtn">Import</button>
@@ -437,10 +437,39 @@
     } catch(e) {}
     return normalize({});
   }
-  function save() {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); }
-    catch(e) { showToast('Could not save. Browser storage is full or blocked.'); }
+  // iOS flushes localStorage to disk a few seconds late, so a force-quit right after a change can lose it.
+  // Every save is mirrored into IndexedDB (commits immediately); on start the newer copy wins.
+  function idb() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open('jkchatorg', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('kv');
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
   }
+  function idbPut(json) { idb().then(db => { db.transaction('kv', 'readwrite').objectStore('kv').put(json, KEY); }).catch(() => {}); }
+  function idbGet() {
+    return idb().then(db => new Promise(res => {
+      const q = db.transaction('kv').objectStore('kv').get(KEY);
+      q.onsuccess = () => res(q.result); q.onerror = () => res(null);
+    })).catch(() => null);
+  }
+  function save() {
+    state.savedAt = Date.now();
+    const json = JSON.stringify(state);
+    try { localStorage.setItem(KEY, json); }
+    catch(e) { showToast('Could not save. Browser storage is full or blocked.'); }
+    idbPut(json);
+  }
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (_) {}
+  document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+  window.addEventListener('pagehide', save);
+  idbGet().then(json => {
+    if (!json) return;
+    try {
+      const m = JSON.parse(json);
+      if ((m.savedAt || 0) > (state.savedAt || 0)) { state = normalize(m); renderAll(); }
+    } catch (_) {}
+  });
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
   const sourceLabels = { claude: 'Claude', chatgpt: 'ChatGPT', gemini: 'Gemini', other: 'Other' };
   const sourceShort = { claude: 'C', chatgpt: 'G', gemini: 'Ge', other: '?' };
@@ -549,7 +578,7 @@
     attachDrag(card, wrap, c);
     return wrap;
   }
-  const APP_VERSION = '1.5.1';
+  const APP_VERSION = '1.5.2';
   // Where is this page running? Home Screen apps and file previews can't open signed-in Safari links.
   function runMode() {
     if (navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)) return { label: 'Home Screen app', linksOk: false };
@@ -1184,6 +1213,7 @@
   $('clearAllBtn').onclick = () => {
     if (!confirm('Delete all ' + state.chats.length + ' chats, all folders, and your sorting from this device? This cannot be undone. Save a backup file first if you want to keep it.')) return;
     try { localStorage.removeItem(KEY); localStorage.removeItem(OLD_KEY); } catch(e) {}
+    idb().then(db => { db.transaction('kv', 'readwrite').objectStore('kv').delete(KEY); }).catch(() => {});
     state = normalize({});
     save(); renderAll();
     document.querySelectorAll('.sheet-backdrop.open').forEach(b => b.classList.remove('open'));
