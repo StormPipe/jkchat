@@ -179,6 +179,10 @@
   .tr-detail .meta { color: var(--ink-soft); font-size: 11.5px; margin: 0 0 8px; }
   .tr-detail .acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .tr-detail select { font-family: inherit; font-size: 13px; padding: 5px 6px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--paper); color: var(--ink); max-width: 150px; }
+  .drop-before { box-shadow: 0 -3px 0 0 var(--amber); }
+  .drop-after { box-shadow: 0 3px 0 0 var(--amber); }
+  .tr-head.drop-hot { background: var(--amber-soft); outline: 2px dashed var(--amber); }
+  .new-folder-row select { max-width: 130px; padding: 10px 6px; border-radius: 9px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: 14px; }
   .drag-ghost {
     position: fixed; z-index: 90; pointer-events: none; background: var(--ink); color: var(--bg); border-radius: 10px;
     padding: 7px 12px; font-size: 13px; font-weight: 600; max-width: 70vw; overflow: hidden; text-overflow: ellipsis;
@@ -272,7 +276,7 @@
       <h1>JK Chat Organizer</h1>
       <span class="sub" id="subLine">Sort chats from every AI engine into one place</span>
     </div>
-    <p class="app-version" id="verLine">JKChat · Version 1.6.0</p>
+    <p class="app-version" id="verLine">JKChat · Version 1.7.0</p>
     <div class="actions-row">
       <button class="btn primary small" id="addBtn">+ Add</button>
       <button class="btn small" id="importBtn">Import</button>
@@ -394,6 +398,7 @@
     <h2>Folders</h2>
     <div id="folderListBody"></div>
     <div class="new-folder-row">
+      <select id="newFolderParent" aria-label="Inside folder"></select>
       <input type="text" id="newFolderInput" placeholder="New folder name">
       <button class="btn primary" id="addFolderBtn">Add</button>
     </div>
@@ -431,6 +436,12 @@
   let listLimit = PAGE;
   const expanded = {};          // bracket folders showing every row
 
+  // Nested folders: folder names stay unique; state.fparent maps child -> parent, state.folders order is sibling order.
+  function fixParents(s) {
+    const p = s.fparent = s.fparent || {};
+    Object.keys(p).forEach(f => { if (!s.folders.includes(f) || !s.folders.includes(p[f]) || p[f] === f) delete p[f]; });
+    Object.keys(p).forEach(f => { let x = f, n = 0; while (p[x] && n++ < 500) x = p[x]; if (n >= 500) delete p[f]; });
+  }
   function normalize(s) {
     s.chats = (s.chats || []).map(c => Object.assign({ ext: null, folder: null, notes: '', msgs: 0, origTitle: c.title, updatedAt: c.createdAt }, c));
     s.folders = s.folders || [];
@@ -439,6 +450,7 @@
     s.activeFolder = s.activeFolder || 'All';
     s.view = s.view || 'list';
     s.collapsed = s.collapsed || {};
+    fixParents(s);
     return s;
   }
   function load() {
@@ -497,10 +509,27 @@
   function inActiveFolder(c) {
     if (state.activeFolder === 'All') return true;
     if (state.activeFolder === 'Unsorted') return !c.folder;
-    return c.folder === state.activeFolder;
+    return !!c.folder && descendants(state.activeFolder).has(c.folder);
   }
+  const childFolders = p => state.folders.filter(f => (state.fparent[f] || '') === (p || ''));
+  function flatFolders() {
+    const out = [], walk = (p, d) => childFolders(p).forEach(f => { out.push({ name: f, depth: d }); walk(f, d + 1); });
+    walk('', 0); return out;
+  }
+  function descendants(f) {
+    const set = new Set([f]), walk = p => childFolders(p).forEach(x => { if (!set.has(x)) { set.add(x); walk(x); } });
+    walk(f); return set;
+  }
+  const folderOptions = () => flatFolders().map(o => '<option value="' + escapeHtml(o.name) + '">' + '\u00A0\u00A0'.repeat(o.depth) + escapeHtml(o.name) + '</option>').join('');
+  // Manual order (pos) wins; chats never placed by hand follow, newest first.
+  const cmpChats = (a, b) => {
+    const pa = a.pos != null, pb = b.pos != null;
+    if (pa && pb && a.pos !== b.pos) return a.pos - b.pos;
+    if (pa !== pb) return pa ? -1 : 1;
+    return byRecent(a, b);
+  };
   const byRecent = (a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0);
-  function visibleChats() { return state.chats.filter(c => matchesSearch(c) && inActiveFolder(c)).sort(byRecent); }
+  function visibleChats() { return state.chats.filter(c => matchesSearch(c) && inActiveFolder(c)).sort(state.activeFolder === 'All' || state.activeFolder === 'Unsorted' ? byRecent : cmpChats); }
 
   // ---------- rendering ----------
   function renderAll() {
@@ -522,15 +551,17 @@
     document.body.classList.toggle('selecting', selectMode);
   }
   function renderFolderChips() {
-    const counts = { All: state.chats.length, Unsorted: state.chats.filter(c => !c.folder).length };
-    state.folders.forEach(f => counts[f] = state.chats.filter(c => c.folder === f).length);
     const el = $('folderChips');
     el.innerHTML = '';
-    ['All', 'Unsorted', ...state.folders].forEach(f => {
+    const items = [{ name: 'All', depth: 0 }, { name: 'Unsorted', depth: 0 }, ...flatFolders()];
+    items.forEach(o => {
+      const f = o.name;
+      const n = f === 'All' ? state.chats.length : f === 'Unsorted' ? state.chats.filter(c => !c.folder).length
+        : state.chats.filter(c => c.folder && descendants(f).has(c.folder)).length;
       const chip = document.createElement('div');
       chip.className = 'chip' + (state.activeFolder === f ? ' active' : '');
       if (f !== 'All') chip.dataset.drop = f === 'Unsorted' ? '' : f;
-      chip.innerHTML = escapeHtml(f) + '<span class="count">' + (counts[f] || 0) + '</span>';
+      chip.innerHTML = (o.depth ? '↳ ' : '') + escapeHtml(f) + '<span class="count">' + n + '</span>';
       chip.onclick = () => { state.activeFolder = f; listLimit = PAGE; save(); renderAll(); };
       el.appendChild(chip);
     });
@@ -584,6 +615,7 @@
         (c.folder ? '<span class="folder-pill">' + escapeHtml(c.folder) + '</span>' : '<span class="folder-pill" style="opacity:.6">Unsorted</span>') +
         '</div></div>';
     card.addEventListener('click', e => { if (e.target.closest('.open-link')) return; rowClick(c); });
+    wrap.dataset.id = c.id;
     wrap.appendChild(card);
     attachSwipe(card, () => deleteChats([c.id]));
     attachDrag(card, wrap, c);
@@ -605,7 +637,7 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) showReview(); });
   window.addEventListener('pageshow', showReview);
   window.addEventListener('focus', showReview);
-  const APP_VERSION = '1.6.0';
+  const APP_VERSION = '1.7.0';
   // Where is this page running? Home Screen apps and file previews can't open signed-in Safari links.
   function runMode() {
     if (navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)) return { label: 'Home Screen app', linksOk: false };
@@ -645,17 +677,15 @@
   }
 
   // ---------- brackets (Warnier-Orr) ----------
-  function bracketGroups() {
-    const chats = state.chats.filter(matchesSearch).sort(byRecent);
-    const groups = [{ name: 'Unsorted', key: '', chats: chats.filter(c => !c.folder) }];
-    state.folders.forEach(f => groups.push({ name: f, key: f, chats: chats.filter(c => c.folder === f) }));
-    if (state.activeFolder !== 'All') return groups.filter(g => g.name === state.activeFolder);
-    return groups;
+  function topKeys() {
+    if (state.activeFolder === 'All') return ['', ...childFolders('')];
+    if (state.activeFolder === 'Unsorted') return [''];
+    return [state.activeFolder];
   }
   const shortDate = ms => new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   let openRowId = null;
   function setCollapsedAll(on) {
-    bracketGroups().forEach(g => { state.collapsed[g.name] = on; });
+    ['Unsorted', ...state.folders].forEach(f => { state.collapsed[f] = on; });
     state.collapsed['__root'] = false;
     save(); renderBrackets();
   }
@@ -664,42 +694,47 @@
     main.innerHTML = '';
     if (state.chats.length === 0) { emptyState(main); return; }
     const searching = $('searchInput').value.trim() !== '';
-    const groups = bracketGroups().filter(g => !(searching && g.chats.length === 0));
-    if (!groups.length) { emptyState(main); return; }
-    const total = groups.reduce((n, g) => n + g.chats.length, 0);
+    const chats = state.chats.filter(c => matchesSearch(c) && inActiveFolder(c));
+    const byKey = new Map();
+    chats.forEach(c => { const k = c.folder || ''; if (!byKey.has(k)) byKey.set(k, []); byKey.get(k).push(c); });
+    byKey.forEach(a => a.sort(cmpChats));
+    const total = k => k === '' ? (byKey.get('') || []).length : [...descendants(k)].reduce((n, f) => n + (byKey.get(f) || []).length, 0);
+    const keys = topKeys().filter(k => !(searching && total(k) === 0));
+    if (!keys.length) { emptyState(main); return; }
     const rootCollapsed = !!state.collapsed['__root'] && !searching;
     const root = document.createElement('div');
     root.className = 'tr-node tr-root';
     const rh = document.createElement('div');
-    rh.className = 'tr-head';
-    rh.innerHTML = '<span class="tri">' + (rootCollapsed ? '▸' : '▾') + '</span><span>All chats</span><span class="n">' + total + '</span>';
+    rh.className = 'tr-head'; rh.dataset.root = '1';
+    rh.innerHTML = '<span class="tri">' + (rootCollapsed ? '▸' : '▾') + '</span><span>All chats</span><span class="n">' + keys.reduce((n, k) => n + total(k), 0) + '</span>';
     rh.onclick = () => { state.collapsed['__root'] = !state.collapsed['__root']; save(); renderBrackets(); };
     root.appendChild(rh);
     main.appendChild(root);
     if (rootCollapsed) return;
-    groups.forEach((g, gi) => {
-      const collapsed = !!state.collapsed[g.name] && !searching;
+    function buildFolder(key) {
+      const name = key === '' ? 'Unsorted' : key;
+      const collapsed = !!state.collapsed[name] && !searching;
       const node = document.createElement('div');
-      node.className = 'tr-node tr-folder' + (gi === groups.length - 1 ? ' last' : '') + (collapsed ? ' collapsed' : '');
-      node.dataset.drop = g.key;
+      node.className = 'tr-node tr-folder' + (collapsed ? ' collapsed' : '');
+      node.dataset.drop = key;
       const head = document.createElement('div');
       head.className = 'tr-head';
-      head.innerHTML = '<span class="tri">' + (collapsed ? '▸' : '▾') + '</span><span>' + escapeHtml(g.name) + '</span><span class="n">' + g.chats.length + '</span><span class="grow"></span><span class="more" title="Add chat here">＋</span>';
+      head.innerHTML = '<span class="tri">' + (collapsed ? '▸' : '▾') + '</span><span>' + escapeHtml(name) + '</span><span class="n">' + total(key) + '</span><span class="grow"></span><span class="more" title="Add chat here">＋</span>';
       head.onclick = e => {
-        if (e.target.closest('.more')) { openChatSheet(null, g.key); return; }
-        state.collapsed[g.name] = !state.collapsed[g.name]; save(); renderBrackets();
+        if (e.target.closest('.more')) { openChatSheet(null, key); return; }
+        state.collapsed[name] = !state.collapsed[name]; save(); renderBrackets();
       };
-      if (g.key) attachDrag(head, node, null, g.key);
+      if (key) attachDrag(head, node, null, key);
       node.appendChild(head);
       const ul = document.createElement('ul');
       ul.className = 'tr-items';
-      const cap = expanded[g.name] ? Infinity : BR_CAP;
-      const shown = g.chats.slice(0, cap);
-      const extra = g.chats.length > cap;
-      shown.forEach((c, i) => {
+      const items = [];
+      if (key !== '') childFolders(key).filter(f => !(searching && total(f) === 0)).forEach(f => items.push(buildFolder(f)));
+      const mine = byKey.get(key) || [];
+      const cap = expanded[name] ? Infinity : BR_CAP;
+      mine.slice(0, cap).forEach(c => {
         const li = document.createElement('li');
-        const isLast = i === shown.length - 1 && !extra;
-        li.className = 'tr-node' + (isLast ? ' last' : '') + (selected.has(c.id) ? ' sel' : '') + (openRowId === c.id ? ' openrow' : '');
+        li.className = 'tr-node' + (selected.has(c.id) ? ' sel' : '') + (openRowId === c.id ? ' openrow' : '');
         li.dataset.id = c.id;
         const row = document.createElement('div');
         row.className = 'tr-row';
@@ -714,24 +749,27 @@
         attachDrag(row, li, c);
         li.appendChild(row);
         if (openRowId === c.id && !selectMode) li.appendChild(buildDetail(c));
-        ul.appendChild(li);
+        items.push(li);
       });
-      if (extra) {
+      if (mine.length > cap) {
         const more = document.createElement('li');
-        more.className = 'tr-node last tr-more';
-        more.innerHTML = '<div class="tr-row">+ ' + (g.chats.length - cap) + ' more</div>';
-        more.onclick = () => { expanded[g.name] = true; renderBrackets(); };
-        ul.appendChild(more);
+        more.className = 'tr-node tr-more';
+        more.innerHTML = '<div class="tr-row">+ ' + (mine.length - cap) + ' more</div>';
+        more.onclick = () => { expanded[name] = true; renderBrackets(); };
+        items.push(more);
       }
-      if (g.chats.length === 0) {
+      if (!items.length) {
         const none = document.createElement('li');
-        none.className = 'tr-node last tr-add';
+        none.className = 'tr-node tr-add';
         none.innerHTML = '<div class="tr-row">empty — drop chats here</div>';
-        ul.appendChild(none);
+        items.push(none);
       }
+      items[items.length - 1].classList.add('last');
+      items.forEach(i => ul.appendChild(i));
       node.appendChild(ul);
-      root.appendChild(node);
-    });
+      return node;
+    }
+    keys.forEach((k, i) => { const n = buildFolder(k); if (i === keys.length - 1) n.classList.add('last'); root.appendChild(n); });
   }
   function buildDetail(c) {
     const d = document.createElement('div');
@@ -743,7 +781,7 @@
       (url ? '<a class="btn small primary" data-open="1" style="text-decoration:none" target="_blank" rel="noopener" href="' + escapeHtml(url) + '">Open ↗</a>' : '') +
       '<button class="btn small" data-act="edit">Edit</button>' +
       '<select data-act="move"><option value="">Move to…</option><option value="__unsorted">Unsorted</option>' +
-        state.folders.map(f => '<option value="' + escapeHtml(f) + '">' + escapeHtml(f) + '</option>').join('') + '</select>' +
+        folderOptions() + '</select>' +
       '<button class="btn small danger" data-act="del">Delete</button></div>';
     d.querySelector('[data-act=edit]').onclick = () => openChatSheet(c);
     d.querySelector('[data-act=del]').onclick = () => deleteChats([c.id]);
@@ -753,28 +791,91 @@
     };
     return d;
   }
-  function moveChats(ids, folderKey) {
-    const idset = new Set(ids);
-    state.chats.forEach(c => { if (idset.has(c.id)) c.folder = folderKey || null; });
+  // Put chats into a folder at a position: before/after chat targetId, or at the end when targetId is null.
+  function placeChats(ids, folderKey, targetId, after) {
+    const idset = new Set(ids), key = folderKey || null;
+    const moving = state.chats.filter(c => idset.has(c.id)).sort(cmpChats);
+    const rest = state.chats.filter(c => (c.folder || null) === key && !idset.has(c.id)).sort(cmpChats);
+    let at = rest.length;
+    if (targetId) { const i = rest.findIndex(c => c.id === targetId); if (i >= 0) at = i + (after ? 1 : 0); }
+    rest.splice(at, 0, ...moving);
+    rest.forEach((c, i) => { c.folder = key; c.pos = i; });
     save(); renderAll();
-    showToast((ids.length === 1 ? 'Moved' : ids.length + ' moved') + ' to ' + (folderKey || 'Unsorted'));
+    showToast((ids.length === 1 ? 'Moved' : ids.length + ' moved') + ' to ' + (key || 'Unsorted'));
+  }
+  const moveChats = (ids, folderKey) => placeChats(ids, folderKey, null, false);
+  // zone: 'into' (become a child, last), 'before' / 'after' (sibling of target), 'root' (top level, last)
+  function moveFolder(f, target, zone) {
+    if (zone !== 'root' && descendants(f).has(target)) return;
+    state.folders = state.folders.filter(x => x !== f);
+    if (zone === 'into') { state.fparent[f] = target; state.folders.push(f); }
+    else if (zone === 'root') { delete state.fparent[f]; state.folders.push(f); }
+    else {
+      const par = state.fparent[target];
+      if (par) state.fparent[f] = par; else delete state.fparent[f];
+      const at = state.folders.indexOf(target);
+      state.folders.splice(zone === 'after' ? at + 1 : at, 0, f);
+    }
+    if (zone === 'into') state.collapsed[target] = false;
+    save(); renderAll(); showToast('Moved folder ' + f);
   }
 
-  // ---------- drag to move (long-press a row, drop on a folder or folder chip) ----------
+  // ---------- drag to move (long-press a row or folder; drop between rows, on a folder, or on a chip) ----------
   let dragActive = false;
   // iOS only honours preventDefault on touchmove if the listener is registered up front and non-passive
   document.addEventListener('touchmove', e => { if (dragActive) e.preventDefault(); }, { passive: false });
   function attachDrag(row, node, chat, folder) {
-    let timer = null, sx = 0, sy = 0, ghost = null, hot = null, raf = 0, lastY = 0, pid = null;
+    let timer = null, sx = 0, sy = 0, ghost = null, hot = null, hotKey = '', raf = 0, lastY = 0, pid = null;
     const HOLD = 320, SLOP = 9;
-    const dropTarget = (x, y) => {
+    const movingIds = () => chat ? (selected.has(chat.id) && selected.size > 1 ? [...selected] : [chat.id]) : [];
+    // What would a drop at (x, y) do? Returns a descriptor, or null when not droppable.
+    const dropAt = (x, y) => {
       if (ghost) ghost.style.display = 'none';
       const el = document.elementFromPoint(x, y);
       if (ghost) ghost.style.display = '';
-      const t = el && el.closest('[data-drop]');
-      return t && t.dataset.drop !== undefined ? t : null;
+      if (!el) return null;
+      const ids = movingIds();
+      const rowEl = el.closest('.tr-row, .card'), idEl = rowEl && rowEl.closest('[data-id]');
+      const target = idEl && state.chats.find(c => c.id === idEl.dataset.id);
+      const rowOk = rowEl && (rowEl.classList.contains('tr-row') || (state.activeFolder !== 'All' && state.activeFolder !== 'Unsorted'));
+      if (target && rowOk) {
+        if (!folder) {
+          if (ids.includes(target.id)) return null;
+          const r = rowEl.getBoundingClientRect();
+          const after = y > r.top + r.height / 2;
+          return { el: rowEl, cls: after ? 'drop-after' : 'drop-before', run: () => placeChats(ids, target.folder, target.id, after) };
+        }
+        const fk = target.folder || '';
+        if (!fk || descendants(folder).has(fk)) return null;
+        const fn = rowEl.closest('[data-drop]');
+        return fn ? { el: fn, cls: 'drop-hot', run: () => moveFolder(folder, fk, 'into') } : null;
+      }
+      const head = el.closest('.tr-head');
+      if (head && head.dataset.root) return folder ? { el: head, cls: 'drop-hot', run: () => moveFolder(folder, null, 'root') } : null;
+      const fnode = el.closest('[data-drop]');
+      if (!fnode) return null;
+      const key = fnode.dataset.drop;
+      if (!folder) {
+        const same = ids.length === 1 && (chat.folder || '') === key && !el.closest('.tr-more');
+        return same ? null : { el: fnode, cls: 'drop-hot', run: () => placeChats(ids, key, null, false) };
+      }
+      if (descendants(folder).has(key)) return null;
+      if (fnode.classList.contains('chip')) return key ? { el: fnode, cls: 'drop-hot', run: () => moveFolder(folder, key, 'into') } : { el: fnode, cls: 'drop-hot', run: () => moveFolder(folder, null, 'root') };
+      if (!key) return null;
+      if (head && fnode.contains(head)) {
+        const r = head.getBoundingClientRect(), rel = (y - r.top) / r.height;
+        if (rel < 0.28) return { el: head, cls: 'drop-before', run: () => moveFolder(folder, key, 'before') };
+        if (rel > 0.72) return { el: head, cls: 'drop-after', run: () => moveFolder(folder, key, 'after') };
+      }
+      return { el: fnode, cls: 'drop-hot', run: () => moveFolder(folder, key, 'into') };
     };
-    const setHot = t => { if (hot === t) return; if (hot) hot.classList.remove('drop-hot'); hot = t; if (hot) hot.classList.add('drop-hot'); };
+    const setHot = t => {
+      const k = t ? t.cls + '|' + (t.el.dataset.id || t.el.dataset.drop || t.el.className) : '';
+      if (k === hotKey && (!t || hot === t.el)) return;
+      if (hot) hot.classList.remove('drop-hot', 'drop-before', 'drop-after');
+      hotKey = k; hot = t ? t.el : null;
+      if (t) t.el.classList.add(t.cls);
+    };
     const stopScroll = () => { cancelAnimationFrame(raf); raf = 0; };
     const scrollLoop = () => {
       if (!dragActive) return;
@@ -800,7 +901,7 @@
       row.addEventListener('click', swallow, { capture: true, once: true });
     };
     const swallow = e => { e.stopImmediatePropagation(); e.preventDefault(); };
-    const place = (x, y) => { lastY = y; if (ghost) { ghost.style.left = x + 'px'; ghost.style.top = y + 'px'; } setHot(dropTarget(x, y)); };
+    const place = (x, y) => { lastY = y; if (ghost) { ghost.style.left = x + 'px'; ghost.style.top = y + 'px'; } setHot(dropAt(x, y)); };
     function move(e) {
       if (e.pointerId !== pid) return;
       if (!dragActive) { if (Math.hypot(e.clientX - sx, e.clientY - sy) > SLOP) cleanup(); return; }  // moved before hold finished: it's a scroll
@@ -808,21 +909,9 @@
     }
     function up(e) {
       if (e.pointerId !== pid) return;
-      const was = dragActive, t = was ? dropTarget(e.clientX, e.clientY) : null;
+      const was = dragActive, t = was ? dropAt(e.clientX, e.clientY) : null;
       cleanup();
-      if (was && t && folder) {
-        const key = t.dataset.drop;
-        if (key !== folder) {
-          state.folders = state.folders.filter(f => f !== folder);
-          const at = key ? state.folders.indexOf(key) : 0;
-          state.folders.splice(at < 0 ? state.folders.length : at, 0, folder);
-          save(); renderAll(); showToast('Moved folder ' + folder);
-        }
-      } else if (was && t) {
-        const ids = selected.has(chat.id) && selected.size > 1 ? [...selected] : [chat.id];
-        const key = t.dataset.drop;
-        if (!(ids.length === 1 && (chat.folder || '') === key)) moveChats(ids, key);
-      }
+      if (t) t.run();
     }
     function cancel(e) { if (e.pointerId === pid) cleanup(); }
     row.addEventListener('pointerdown', e => {
@@ -835,12 +924,19 @@
   }
   function outlineText() {
     const W = 30, out = [];
-    const clip = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
-    bracketGroups().forEach(g => {
-      out.push(clip(g.name, W) + ' (' + g.chats.length + ')');
-      g.chats.forEach((c, i) => out.push((i === g.chats.length - 1 ? '└─ ' : '├─ ') + clip(c.title, W - 3)));
-      out.push('');
-    });
+    const clip = (str, n) => str.length > n ? str.slice(0, n - 1) + '…' : str;
+    const chats = state.chats.filter(c => matchesSearch(c) && inActiveFolder(c));
+    const mineOf = k => chats.filter(c => (c.folder || '') === k).sort(cmpChats);
+    const total = k => k === '' ? mineOf('').length : [...descendants(k)].reduce((n, f) => n + mineOf(f).length, 0);
+    const walk = (key, prefix) => {
+      const items = [...(key === '' ? [] : childFolders(key)).map(f => ({ f })), ...mineOf(key).map(c => ({ c }))];
+      items.forEach((it, i) => {
+        const last = i === items.length - 1, br = last ? '└─ ' : '├─ ';
+        if (it.f) { out.push(prefix + br + clip(it.f, W) + ' (' + total(it.f) + ')'); walk(it.f, prefix + (last ? '   ' : '│  ')); }
+        else out.push(prefix + br + clip(it.c.title, W));
+      });
+    };
+    topKeys().forEach(k => { out.push(clip(k || 'Unsorted', W) + ' (' + total(k) + ')'); walk(k, ''); out.push(''); });
     return out.join('\n').trim();
   }
   $('expandAllBtn').onclick = () => { state.collapsed = {}; save(); renderBrackets(); };
@@ -890,7 +986,7 @@
     $('bulkCount').textContent = selected.size + ' selected';
     const sel = $('bulkMove');
     sel.innerHTML = '<option value="">Move to…</option><option value="__unsorted">Unsorted</option>' +
-      state.folders.map(f => '<option value="' + escapeHtml(f) + '">' + escapeHtml(f) + '</option>').join('') +
+      folderOptions() +
       '<option value="__new">New folder…</option>';
     sel.value = '';
     const visible = visibleChats();
@@ -1019,7 +1115,7 @@
   function renderFolderSelect() {
     const sel = $('f_folder');
     const current = sel.value;
-    sel.innerHTML = '<option value="">Unsorted</option>' + state.folders.map(f => '<option value="' + escapeHtml(f) + '">' + escapeHtml(f) + '</option>').join('');
+    sel.innerHTML = '<option value="">Unsorted</option>' + folderOptions();
     sel.value = current;
   }
 
@@ -1143,6 +1239,8 @@
   }
   function mergeBackup(b) {
     (b.folders || []).forEach(f => { if (!state.folders.includes(f)) state.folders.push(f); });
+    Object.entries(b.fparent || {}).forEach(([f, par]) => { if (!state.fparent[f]) state.fparent[f] = par; });
+    fixParents(state);
     (b.dismissed || []).forEach(x => { if (!state.dismissed.includes(x)) state.dismissed.push(x); });
     (b.queue || []).forEach(q => { if (!state.queue.some(y => y.url === q.url)) state.queue.push(q); });
     const byExt = new Map(state.chats.filter(c => c.ext).map(c => [c.ext, c]));
@@ -1202,27 +1300,34 @@
   folderSheetBackdrop.onclick = e => { if (e.target === folderSheetBackdrop) folderSheetBackdrop.classList.remove('open'); };
   function renderFolderListBody() {
     const body = $('folderListBody');
-    if (state.folders.length === 0) { body.innerHTML = '<p class="import-help">No folders yet. Add one below.</p>'; return; }
+    $('newFolderParent').innerHTML = '<option value="">Top level</option>' + folderOptions();
+    if (state.folders.length === 0) { body.innerHTML = '<p class="import-help">No folders yet. Add one below. Press and hold a folder in the Brackets view to drag it inside another.</p>'; return; }
     body.innerHTML = '';
-    state.folders.forEach((f, i) => {
+    flatFolders().forEach(o => {
+      const f = o.name, i = state.folders.indexOf(f);
       const n = state.chats.filter(c => c.folder === f).length;
       const row = document.createElement('div');
       row.className = 'folder-list-item';
-      row.innerHTML = '<span>' + escapeHtml(f) + ' <span style="color:var(--ink-soft)">(' + n + ')</span></span><span class="acts"><button class="rn">Rename</button><button class="rm">Remove</button></span>';
+      row.innerHTML = '<span style="padding-left:' + o.depth * 16 + 'px">' + escapeHtml(f) + ' <span style="color:var(--ink-soft)">(' + n + ')</span></span><span class="acts"><button class="rn">Rename</button><button class="rm">Remove</button></span>';
       row.querySelector('.rn').onclick = () => {
         const name = (prompt('Rename folder', f) || '').trim();
         if (!name || name === f) return;
-        if (state.folders.includes(name)) { showToast('That folder already exists'); return; }
+        if (state.folders.includes(name) || name === 'All' || name === 'Unsorted') { showToast('That folder name is taken'); return; }
         state.folders[i] = name;
         state.chats.forEach(c => { if (c.folder === f) c.folder = name; });
+        Object.keys(state.fparent).forEach(k => { if (state.fparent[k] === f) state.fparent[k] = name; });
+        if (state.fparent[f] !== undefined) { state.fparent[name] = state.fparent[f]; delete state.fparent[f]; }
         if (state.activeFolder === f) state.activeFolder = name;
         if (state.collapsed[f] !== undefined) { state.collapsed[name] = state.collapsed[f]; delete state.collapsed[f]; }
         save(); renderFolderListBody(); renderAll();
       };
       row.querySelector('.rm').onclick = () => {
-        if (n > 0 && !confirm('Remove "' + f + '"? Its ' + n + ' chats move to Unsorted.')) return;
+        const par = state.fparent[f] || null, kids = childFolders(f).length;
+        if ((n > 0 || kids > 0) && !confirm('Remove "' + f + '"? Its ' + n + ' chats and ' + kids + ' subfolders move up to ' + (par || 'Unsorted / top level') + '.')) return;
+        childFolders(f).forEach(k => { if (par) state.fparent[k] = par; else delete state.fparent[k]; });
         state.folders = state.folders.filter(x => x !== f);
-        state.chats.forEach(c => { if (c.folder === f) c.folder = null; });
+        delete state.fparent[f];
+        state.chats.forEach(c => { if (c.folder === f) c.folder = par; });
         if (state.activeFolder === f) state.activeFolder = 'All';
         save(); renderFolderListBody(); renderAll();
       };
@@ -1234,13 +1339,14 @@
     const name = input.value.trim();
     if (!name || state.folders.includes(name) || name === 'All' || name === 'Unsorted') return;
     state.folders.push(name);
+    if ($('newFolderParent').value) state.fparent[name] = $('newFolderParent').value;
     input.value = '';
     save(); renderFolderListBody(); renderAll();
   };
   $('newFolderInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('addFolderBtn').click(); });
 
   $('exportBtn').onclick = () => {
-    const payload = { jkchat: 1, exportedAt: new Date().toISOString(), folders: state.folders, dismissed: state.dismissed, queue: state.queue, chats: state.chats };
+    const payload = { jkchat: 1, exportedAt: new Date().toISOString(), folders: state.folders, fparent: state.fparent, dismissed: state.dismissed, queue: state.queue, chats: state.chats };
     const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
