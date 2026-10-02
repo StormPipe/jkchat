@@ -262,7 +262,7 @@
       <h1>JK Chat Organizer</h1>
       <span class="sub" id="subLine">Sort chats from every AI engine into one place</span>
     </div>
-    <p class="app-version" id="verLine">JKChat · Version 1.5.0</p>
+    <p class="app-version" id="verLine">JKChat · Version 1.5.1</p>
     <div class="actions-row">
       <button class="btn primary small" id="addBtn">+ Add</button>
       <button class="btn small" id="importBtn">Import</button>
@@ -549,7 +549,7 @@
     attachDrag(card, wrap, c);
     return wrap;
   }
-  const APP_VERSION = '1.5.0';
+  const APP_VERSION = '1.5.1';
   // Where is this page running? Home Screen apps and file previews can't open signed-in Safari links.
   function runMode() {
     if (navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)) return { label: 'Home Screen app', linksOk: false };
@@ -564,7 +564,11 @@
     try { navigator.clipboard && navigator.clipboard.writeText(url); } catch (_) {}
     if (!runMode().linksOk) {
       e.preventDefault();
-      showToast('Link copied. This is the ' + runMode().label + ' - paste it into Safari. (Open the page in a Safari tab for one-tap Open.)');
+      // Home Screen app: x-safari-https:// hands the URL to real Safari (signed in), which then offers the app via its universal link.
+      if (navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)) {
+        location.href = 'x-safari-' + url;
+        setTimeout(() => { if (!document.hidden) showToast('Link copied. If Safari did not open, paste it into Safari.'); }, 1500);
+      } else showToast('Link copied. This is the ' + runMode().label + ' - paste it into Safari. (Open the page in a Safari tab for one-tap Open.)');
     }
   }, true);
   // Live chat URL: from the export id kept in c.ext (claude:<uuid>, chatgpt:<id>),
