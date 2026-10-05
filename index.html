@@ -21,7 +21,10 @@
     --danger-soft: #F5DAD6;
     --claude-tag: #C97A2B;
     --chatgpt-tag: #3E7C6B;
+    --dayone-tag: #2F80C8;
     --gemini-tag: #4A6FA5;
+    --aistudio-tag: #7B5EA7;
+    --aimode-tag: #B5527A;
     --other-tag: #8A8578;
     --radius: 10px;
     padding-top: env(safe-area-inset-top, 0px);
@@ -96,6 +99,12 @@
     background: var(--paper); color: var(--ink-soft); font-size: 13px; font-weight: 600;
     cursor: pointer; white-space: nowrap;
   }
+  #sourceChips { margin-bottom: 6px; }
+  #sourceChips:empty { display: none; }
+  .clean-row { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; font-size: 13.5px; line-height: 1.35; }
+  .clean-row input { margin-top: 3px; }
+  .clean-row .arrow { color: var(--ink-soft); }
+  .clean-why { color: var(--ink-soft); font-size: 12px; }
   .chip.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
   .chip .count { opacity: 0.6; margin-left: 4px; font-weight: 500; }
   main { flex: 1; padding: 10px 14px 120px; }
@@ -121,6 +130,9 @@
   .tag { flex: 0 0 auto; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 5px; color: #fff; white-space: nowrap; }
   .tag.claude { background: var(--claude-tag); }
   .tag.chatgpt { background: var(--chatgpt-tag); }
+  .tag.dayone { background: var(--dayone-tag); }
+  .tag.aimode { background: var(--aimode-tag); }
+  .tag.aistudio { background: var(--aistudio-tag); }
   .tag.gemini { background: var(--gemini-tag); }
   .tag.other { background: var(--other-tag); }
   .card-notes {
@@ -276,7 +288,7 @@
       <h1>JK Chat Organizer</h1>
       <span class="sub" id="subLine">Sort chats from every AI engine into one place</span>
     </div>
-    <p class="app-version" id="verLine">JKChat · Version 1.7.0</p>
+    <p class="app-version" id="verLine">JKChat · Version 2.12.1</p>
     <div class="actions-row">
       <button class="btn primary small" id="addBtn">+ Add</button>
       <button class="btn small" id="importBtn">Import</button>
@@ -289,13 +301,19 @@
         <button data-view="list">List</button>
         <button data-view="brackets">Brackets</button>
       </div>
+      <a class="btn small" href="https://claude.ai/new" target="_blank" rel="noopener" style="text-decoration:none">New Claude</a>
+      <a class="btn small" href="https://chatgpt.com/" target="_blank" rel="noopener" style="text-decoration:none">New ChatGPT</a>
+      <a class="btn small" href="https://gemini.google.com/app" target="_blank" rel="noopener" style="text-decoration:none">New Gemini</a>
+      <a class="btn small" href="https://www.google.com/search?udm=50" target="_blank" rel="noopener" style="text-decoration:none">AI Mode</a>
+      <a class="btn small" href="https://aistudio.google.com/prompts/new_chat" target="_blank" rel="noopener" style="text-decoration:none">New AI Studio</a>
       <button class="btn small brOnly" id="expandAllBtn">Expand all</button>
       <button class="btn small brOnly" id="collapseAllBtn">Collapse all</button>
       <button class="btn small ghost brOnly" id="copyOutlineBtn" title="Copy outline">Copy</button>
     </div>
   </header>
   <div class="stick">
-    <div class="searchwrap" id="searchWrap"><input type="text" class="search" id="searchInput" placeholder="Search titles and notes…"><button class="search-x" id="searchX" aria-label="Clear search">✕</button></div>
+    <div class="searchwrap" id="searchWrap"><input type="text" class="search" id="searchInput" placeholder="Search titles, keywords, notes, source…"><button class="search-x" id="searchX" aria-label="Clear search">✕</button></div>
+    <div class="folders" id="sourceChips"></div>
     <div class="folders" id="folderChips"></div>
   </div>
   <main id="main"></main>
@@ -328,7 +346,10 @@
       <div class="source-picker" id="sourcePicker">
         <div class="source-opt" data-src="claude">Claude</div>
         <div class="source-opt" data-src="chatgpt">ChatGPT</div>
+        <div class="source-opt" data-src="dayone">Day One</div>
         <div class="source-opt" data-src="gemini">Gemini</div>
+        <div class="source-opt" data-src="aistudio">AI Studio</div>
+        <div class="source-opt" data-src="aimode">AI Mode</div>
         <div class="source-opt" data-src="other">Other</div>
       </div>
     </div>
@@ -365,8 +386,8 @@
     <h2>Import chats</h2>
     <div class="drop" id="dropZone">
       Drop export files here, or choose them from disk.<br>
-      Claude <b>conversations.json</b> or ChatGPT <b>conversations-000.json</b> (pick several at once). Re-importing a newer export adds only the new chats.<br>
-      <input type="file" id="fileInput" accept=".json,application/json" multiple style="display:none">
+      Claude <b>conversations.json</b>, ChatGPT <b>conversations-000.json</b>, Day One journal <b>.json</b> files (unzip first), Google Takeout <b>MyActivity.json</b> (Gemini Apps, choose JSON format), or Google AI Studio chat files from Drive (pick several at once). Re-importing a newer export adds only the new chats.<br>
+      <input type="file" id="fileInput" multiple style="display:none">
       <button class="btn primary" id="chooseFiles">Choose files…</button>
     </div>
     <p class="import-help">Deleting a chat here only removes it from this list (it goes on the To delete at source list so you can remove the real chat), and deleted chats stay out on re-import. Also accepts a backup file saved from this app.</p>
@@ -380,7 +401,10 @@
         <div class="source-picker" id="importSourcePicker">
           <div class="source-opt sel" data-src="claude">Claude</div>
           <div class="source-opt" data-src="chatgpt">ChatGPT</div>
+        <div class="source-opt" data-src="dayone">Day One</div>
           <div class="source-opt" data-src="gemini">Gemini</div>
+          <div class="source-opt" data-src="aistudio">AI Studio</div>
+          <div class="source-opt" data-src="aimode">AI Mode</div>
           <div class="source-opt" data-src="other">Other</div>
         </div>
       </div>
@@ -409,12 +433,30 @@
       <p class="import-help">Saves every chat, folder, and sort decision to a .json file. Import that file on another device to bring the sorting over. It fills in only what's missing and never overwrites folders you already set there.</p>
     </div>
     <div class="field">
+      <label>Clean up data</label>
+      <button class="btn" id="scrubBtn">Scan and clean up…</button>
+      <button class="btn" id="undoScrubBtn" style="display:none">Undo last clean-up</button>
+      <p class="import-help">Finds folder and chat names with leftovers like %20 or %2F, extra spaces and HTML codes, merges duplicate folders, and shows you the plan first. Nothing changes until you tap Apply, and a backup is saved before it does.</p>
+    </div>
+    <div class="field">
       <label>Start over</label>
       <button class="btn danger" id="clearAllBtn">Clear all data</button>
       <p class="import-help">Removes every chat, folder, and sort decision from this device. Save a backup file first if you want to keep your sorting. Your chats in Claude / ChatGPT are not touched.</p>
     </div>
     <div class="sheet-actions">
       <button class="btn ghost" id="closeFolders" style="flex:1">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- clean up -->
+<div class="sheet-backdrop" id="cleanSheetBackdrop">
+  <div class="sheet">
+    <h2>Clean up data</h2>
+    <div id="cleanBody"></div>
+    <div class="sheet-actions">
+      <button class="btn ghost" id="cleanCancel">Cancel</button>
+      <button class="btn primary" id="cleanApply">Apply</button>
     </div>
   </div>
 </div>
@@ -444,10 +486,12 @@
   }
   function normalize(s) {
     s.chats = (s.chats || []).map(c => Object.assign({ ext: null, folder: null, notes: '', msgs: 0, origTitle: c.title, updatedAt: c.createdAt }, c));
+    s.chats.forEach(c => { if (c.source === 'aimode' && c.cap) delete c.url; });   // 2.12.0: those links were per-load tokens, not thread links
     s.folders = s.folders || [];
     s.dismissed = s.dismissed || [];
     s.queue = s.queue || [];
     s.activeFolder = s.activeFolder || 'All';
+    s.activeSource = s.activeSource || 'All';
     s.view = s.view || 'list';
     s.collapsed = s.collapsed || {};
     fixParents(s);
@@ -494,8 +538,8 @@
     } catch (_) {}
   });
   function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
-  const sourceLabels = { claude: 'Claude', chatgpt: 'ChatGPT', gemini: 'Gemini', other: 'Other' };
-  const sourceShort = { claude: 'C', chatgpt: 'G', gemini: 'Ge', other: '?' };
+  const sourceLabels = { claude: 'Claude', chatgpt: 'ChatGPT', dayone: 'Day One', gemini: 'Gemini', aistudio: 'AI Studio', aimode: 'AI Mode', other: 'Other' };
+  const sourceShort = { claude: 'C', chatgpt: 'G', dayone: 'D1', gemini: 'Ge', aistudio: 'AI', aimode: 'AM', other: '?' };
   function escapeHtml(s) {
     return (s == null ? '' : String(s)).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
@@ -504,7 +548,10 @@
   // ---------- filtering ----------
   function matchesSearch(c) {
     const q = $('searchInput').value.trim().toLowerCase();
-    return !q || c.title.toLowerCase().includes(q) || (c.notes || '').toLowerCase().includes(q);
+    if (state.activeSource !== 'All' && c.source !== state.activeSource) return false;
+    return !q || c.title.toLowerCase().includes(q) || (c.notes || '').toLowerCase().includes(q) || (c.kw || '').includes(q)
+      || (c.media && ((c.media.p && 'photo'.includes(q)) || (c.media.v && 'video'.includes(q)) || (c.media.a && 'audio'.includes(q)) || (c.media.f && 'pdf'.includes(q))))
+      || (sourceLabels[c.source] || '').toLowerCase().includes(q);
   }
   function inActiveFolder(c) {
     if (state.activeFolder === 'All') return true;
@@ -551,6 +598,18 @@
     document.body.classList.toggle('selecting', selectMode);
   }
   function renderFolderChips() {
+    const se = $('sourceChips');
+    se.innerHTML = '';
+    const srcs = Object.keys(sourceLabels).filter(k => state.chats.some(c => c.source === k));
+    if (state.activeSource !== 'All' && !srcs.includes(state.activeSource)) state.activeSource = 'All';
+    if (srcs.length > 1) ['All', ...srcs].forEach(k => {
+      const n = k === 'All' ? state.chats.length : state.chats.filter(c => c.source === k).length;
+      const chip = document.createElement('div');
+      chip.className = 'chip' + (state.activeSource === k ? ' active' : '');
+      chip.innerHTML = (k === 'All' ? 'All sources' : escapeHtml(sourceLabels[k])) + '<span class="count">' + n + '</span>';
+      chip.onclick = () => { state.activeSource = k; state.activeFolder = 'All'; listLimit = PAGE; save(); renderAll(); };
+      se.appendChild(chip);
+    });
     const el = $('folderChips');
     el.innerHTML = '';
     const items = [{ name: 'All', depth: 0 }, { name: 'Unsorted', depth: 0 }, ...flatFolders()];
@@ -610,6 +669,8 @@
         '<div style="display:flex;align-items:center">' + (chatUrl(c) ? '<a class="open-link" href="' + escapeHtml(chatUrl(c)) + '" target="_blank" rel="noopener">Open ↗</a>' : '') +
         '<div class="tag ' + c.source + '" style="margin-left:8px">' + (sourceLabels[c.source] || 'Other') + '</div></div></div>' +
         (c.notes ? '<p class="card-notes">' + escapeHtml(c.notes) + '</p>' : '') +
+        (c.kw ? '<p class="card-notes">Keywords: ' + escapeHtml(c.kw) + '</p>' : '') +
+        (mediaLabel(c) ? '<p class="card-notes">' + mediaLabel(c) + '</p>' : '') +
         '<div class="card-meta"><span>' + new Date(c.createdAt).toLocaleDateString() +
         (c.msgs ? ' · ' + c.msgs + ' msgs' : '') + '</span>' +
         (c.folder ? '<span class="folder-pill">' + escapeHtml(c.folder) + '</span>' : '<span class="folder-pill" style="opacity:.6">Unsorted</span>') +
@@ -622,11 +683,12 @@
     return wrap;
   }
   // After Open, coming back to this page asks Keep / Delete for that chat, so deciding is one tap.
+  const inApp = location.protocol === 'jkchat:';
   let reviewId = null;
   try { reviewId = sessionStorage.getItem('jkReview'); } catch (_) {}
   function hideReview() { reviewId = null; try { sessionStorage.removeItem('jkReview'); } catch (_) {} $('reviewBar').classList.remove('show'); }
   function showReview() {
-    if (!reviewId) return;
+    if (inApp || !reviewId) return;
     const c = state.chats.find(x => x.id === reviewId);
     if (!c) { hideReview(); return; }
     $('reviewTitle').textContent = c.title;
@@ -637,10 +699,11 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) showReview(); });
   window.addEventListener('pageshow', showReview);
   window.addEventListener('focus', showReview);
-  const APP_VERSION = '1.7.0';
+  const APP_VERSION = '2.12.1';
   // Where is this page running? Home Screen apps and file previews can't open signed-in Safari links.
   function runMode() {
     if (navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches)) return { label: 'Home Screen app', linksOk: false };
+    if (location.protocol === 'jkchat:') return { label: 'JKChat app', linksOk: true };
     if (location.protocol === 'file:') return { label: 'file preview', linksOk: false };
     return { label: 'Safari', linksOk: true };
   }
@@ -652,7 +715,7 @@
     try { navigator.clipboard && navigator.clipboard.writeText(url); } catch (_) {}
     if (!a.closest('#queueBody')) {
       const oc = state.chats.find(c => chatUrl(c) === a.getAttribute('href'));
-      if (oc) { reviewId = oc.id; try { sessionStorage.setItem('jkReview', oc.id); } catch (_) {} }
+      if (oc && !inApp) { reviewId = oc.id; try { sessionStorage.setItem('jkReview', oc.id); } catch (_) {} }
     }
     if (!runMode().linksOk) {
       e.preventDefault();
@@ -666,11 +729,51 @@
   // Live chat URL: from the export id kept in c.ext (claude:<uuid>, chatgpt:<id>),
   // else the first URL pasted into notes. Gemini exports carry no id.
   function chatUrl(c) {
+    if (c.source === 'aimode' && c.cap) return 'https://www.google.com/search?udm=50&jkopen=' + encodeURIComponent(c.title);   // the app taps that thread by title
+    if (/^https?:\/\//.test(c.url || '')) return c.url;
+    const g = /^gemini:([0-9a-f]{8,})$/i.exec(c.ext || '');
+    if (g) return 'https://gemini.google.com/app/' + g[1].toLowerCase();
+    const ai = /^aistudio:id:([\w-]{12,})$/.exec(c.ext || '');
+    if (ai) return 'https://aistudio.google.com/prompts/' + ai[1];
+    const d = /^dayone:([0-9a-f]{32})$/i.exec(c.ext || '');
+    if (d) return 'dayone://view?entryId=' + d[1].toUpperCase();
     const m = /^(claude|chatgpt):([0-9a-f-]{20,})$/i.exec(c.ext || '');
     if (m) return m[1] === 'claude' ? 'https://claude.ai/chat/' + m[2] : 'https://chatgpt.com/c/' + m[2];
     const u = /https?:\/\/[^\s)]+/.exec(c.notes || '');
     return u ? u[0] : null;
   }
+  // Called by the iOS app when the in-app chat browser closes, with every chat page visited:
+  // refreshes title/last-activity of known chats and adds chats started in the app.
+  window.jkSyncOpened = function (pages) {
+    const generic = /^(|claude|claude\.ai|chatgpt|new chat|untitled|untitled chat|gemini|google gemini|google ai studio|ai studio)$/i;
+    const seen = new Set();
+    let touched = 0, added = 0, last = '';
+    (pages || []).forEach(pg => {
+      const m = /^https:\/\/(claude\.ai\/chat|chatgpt\.com\/c|gemini\.google\.com(?:\/u\/\d+)?\/app|aistudio\.google\.com\/prompts)\/([0-9A-Za-z_-]{12,})/i.exec(pg.url || '');
+      if (!m) return;
+      const source = /^claude/i.test(m[1]) ? 'claude' : /^chatgpt/i.test(m[1]) ? 'chatgpt' : /^gemini/i.test(m[1]) ? 'gemini' : 'aistudio';
+      if ((source === 'claude' || source === 'chatgpt') && !/^[0-9a-f-]{20,}$/i.test(m[2])) return;
+      const ext = source === 'aistudio' ? 'aistudio:id:' + m[2] : source + ':' + m[2].toLowerCase();
+      if (seen.has(ext)) return; seen.add(ext);
+      if (state.dismissed.includes(ext)) return;
+      const title = String(pg.title || '').replace(/\s+[-\u2013|]\s+(Claude|ChatGPT|Google Gemini|Gemini|Google AI Studio)\s*$/i, '').trim();
+      const useful = !generic.test(title);
+      const cur = state.chats.find(c => c.ext === ext);
+      const now = Date.now();
+      if (cur) {
+        cur.updatedAt = now;
+        if (useful) { if (cur.title === cur.origTitle) cur.title = title; cur.origTitle = title; }
+        touched++; last = cur.title;
+      } else {
+        state.chats.push({ id: uid(), ext, title: useful ? title : 'Untitled chat', origTitle: useful ? title : 'Untitled chat',
+          notes: '', source, folder: null, createdAt: now, updatedAt: now, msgs: 0 });
+        added++; last = useful ? title : 'Untitled chat';
+      }
+    });
+    if (!touched && !added) return;
+    save(); renderAll();
+    showToast(added ? 'Added "' + last + '"' : 'Updated "' + last + '"');
+  };
   function rowClick(c) {
     if (selectMode) { toggleSel(c.id); return; }
     openChatSheet(c);
@@ -739,7 +842,7 @@
         const row = document.createElement('div');
         row.className = 'tr-row';
         row.innerHTML = (selectMode ? '<span class="check">' + (selected.has(c.id) ? '✓' : '') + '</span>' : '<span class="dot">●</span>') +
-          '<span class="t">' + escapeHtml(c.title) + '</span>' +
+          '<span class="t">' + escapeHtml(c.title) + (mediaLabel(c) ? ' 📷' : '') + '</span>' +
           '<span class="tag ' + c.source + '">' + (sourceShort[c.source] || '?') + '</span>' +
           '<span class="d">' + shortDate(c.updatedAt || c.createdAt) + '</span>';
         row.onclick = () => {
@@ -775,7 +878,8 @@
     const d = document.createElement('div');
     d.className = 'tr-detail';
     const url = chatUrl(c);
-    d.innerHTML = (c.notes ? '<p class="notes">' + escapeHtml(c.notes) + '</p>' : '') +
+    d.innerHTML = (c.notes ? '<p class="notes">' + escapeHtml(c.notes) + '</p>' : '') + (c.kw ? '<p class="notes">Keywords: ' + escapeHtml(c.kw) + '</p>' : '') +
+      (mediaLabel(c) ? '<p class="meta">' + mediaLabel(c) + '</p>' : '') +
       '<p class="meta">Created ' + new Date(c.createdAt).toLocaleDateString() + (c.msgs ? ' · ' + c.msgs + ' msgs' : '') + ' · ' + (sourceLabels[c.source] || 'Other') + '</p>' +
       '<div class="acts">' +
       (url ? '<a class="btn small primary" data-open="1" style="text-decoration:none" target="_blank" rel="noopener" href="' + escapeHtml(url) + '">Open ↗</a>' : '') +
@@ -1152,7 +1256,7 @@
     for (const f of files) {
       try {
         const data = JSON.parse(await readFile(f));
-        const r = importData(data);
+        const r = importData(data, f.name, f.lastModified);
         if (r === null) { totals.bad.push(f.name); continue; }
         totals.added += r.added; totals.existing += r.existing || 0; totals.skipped += r.skipped || 0; totals.updated += r.updated || 0;
       } catch(e) { totals.bad.push(f.name); }
@@ -1170,19 +1274,219 @@
   function extractItems(data) {
     if (Array.isArray(data)) return data;
     if (data && Array.isArray(data.conversations)) return data.conversations;
+    if (data && Array.isArray(data.entries)) return data.entries;   // Day One Journal.json
     return null;
   }
-  function importData(data) {
+  // Thread list captured from a site's sidebar by the iOS app's browser (Capture button): files new threads
+  // (AI Mode has no export) and fixes titles of known Gemini / Claude / ChatGPT chats. Returns a message for the app.
+  window.jkCaptureThreads = function (payload) {
+    const threads = (payload && payload.threads) || [];
+    let host = ''; try { host = new URL(payload.url).hostname; } catch (_) {}
+    const source = /gemini\.google/.test(host) ? 'gemini' : /claude\.ai/.test(host) ? 'claude' : /chatgpt\.com/.test(host) ? 'chatgpt' : /google\./.test(host) ? 'aimode' : 'other';
+    // Version 2.9.0 mistook the page's top tabs (All, Images, Maps...) for threads: remove those link-based AI Mode entries.
+    if (source === 'aimode') state.chats = state.chats.filter(c => !(c.source === 'aimode' && !c.cap && /google\.com\/search/.test(c.url || '')));
+    const dismissed = new Set(state.dismissed), byExt = new Map(state.chats.filter(c => c.ext).map(c => [c.ext, c]));
+    const now = Date.now(), used = new Set();
+    state.chats = state.chats.filter(c => !(c.source === 'aimode' && c.cap && /^(add notebook|notebooks?)$/i.test(c.title)));
+    let added = 0, renamed = 0, same = 0, skipped = 0;
+    threads.forEach((t, i) => {
+      const title = clip(t.title, 120); if (!title) return;
+      const href = t.href || '';
+      let ext = '', url = '';
+      let m;
+      if ((m = /gemini\.google\.com\/(?:u\/\d+\/)?app\/([0-9a-f]+)/i.exec(href))) ext = 'gemini:' + m[1].toLowerCase();
+      else if ((m = /claude\.ai\/chat\/([0-9a-f-]{20,})/i.exec(href))) ext = 'claude:' + m[1].toLowerCase();
+      else if ((m = /chatgpt\.com\/c\/([0-9a-f-]{20,})/i.exec(href))) ext = 'chatgpt:' + m[1].toLowerCase();
+      else if (source === 'aimode' || source === 'other') {
+        if (t.key) ext = source + ':k:' + hashStr(t.key);
+        else if (href) { ext = source + ':' + hashStr(href); url = href; }
+        else {   // no link: key on the title, counted from the oldest end so new threads at the top do not shift keys
+          const n = threads.slice(i).filter(x => clip(x.title, 120) === title).length;
+          ext = source + ':t:' + title.toLowerCase() + '#' + n;
+        }
+      }
+      if (!ext) return;
+      if (dismissed.has(ext)) { skipped++; return; }
+      let cur = byExt.get(ext);
+      if (!cur && (source === 'aimode' || source === 'other') && t.key) {
+        // Page ids may change between visits: adopt an existing entry with the same title instead of adding a duplicate.
+        cur = state.chats.find(c => c.source === source && c.cap && c.title === title && !used.has(c.id));
+        if (cur) { byExt.delete(cur.ext); cur.ext = ext; byExt.set(ext, cur); }
+      }
+      if (cur) {
+        used.add(cur.id);
+        if (cur.title === title) { same++; return; }
+        if (cur.title === cur.origTitle) { cur.title = title; renamed++; } else same++;
+        cur.origTitle = title; return;
+      }
+      const c = { id: uid(), ext, title, origTitle: title, notes: '', source, folder: null, createdAt: now - i * 60000, updatedAt: now - i * 60000, msgs: 0 };
+      c.cap = 2;
+      if (url) c.url = url;
+      used.add(c.id);
+      state.chats.push(c); byExt.set(ext, c); added++;
+    });
+    save(); renderAll();
+    return added + ' new, ' + renamed + ' titles updated, ' + same + ' unchanged' + (skipped ? ', ' + skipped + ' skipped (deleted earlier)' : '') + ' (' + threads.length + ' found, tagged ' + (sourceLabels[source] || source) + ').';
+  };
+  // Read-threads support (iOS app): titles still needing keywords, and the per-thread result (link + text -> keywords).
+  window.jkNeedRead = function () {
+    return JSON.stringify(state.chats.filter(c => c.source === 'aimode' && c.cap && !c.read).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)).map(c => c.title));
+  };
+  const GOOGLE_UI = /\b(images?|videos?|news|maps|shopping|books|flights|finance|web|sign|tools|more|search|mode|overview|overviews|sources?|feedback|privacy|terms|settings|threads?|notebooks?|recent|share|copy|response|responses|ask|anything|follow|answer|ai|google|results?|show|all|list|add)\b/gi;
+  // Called when you press Done after opening an AI Mode thread in the app: it moves to the top, keywords and link refresh.
+  window.jkTouchThread = function (r) {
+    const c = state.chats.find(x => x.source === 'aimode' && x.cap && x.title === r.title);
+    if (!c) return 'no match';
+    c.updatedAt = Date.now();
+    const text = String(r.text || '');
+    if (text.length > 40) {
+      const n = { _text: text.replace(GOOGLE_UI, ' ').replace(r.title, ' ') };
+      buildKeywords([n]);
+      if (n.kw) { c.kw = n.kw; c.read = 1; }
+    }
+    const url = String(r.url || '');
+    save(); renderAll();
+    return 'ok';
+  };
+  window.jkSaveThread = function (r) {
+    const c = state.chats.find(x => x.source === 'aimode' && x.cap && !x.read && x.title === r.title);
+    if (!c) return 'no match';
+    const text = String(r.text || '');
+    if (text.length > 40) {
+      const n = { _text: text.replace(GOOGLE_UI, ' ').replace(r.title, ' ') };
+      buildKeywords([n]);
+      c.kw = n.kw; c.read = 1;
+    }
+    const url = String(r.url || '');
+    save(); renderAll();
+    return 'ok';
+  };
+  // ---------- Google: Gemini (Takeout MyActivity.json) and AI Studio (chat files saved to Drive) ----------
+  function stripTags(h) {
+    return String(h || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+  }
+  function isGeminiActivity(data) {
+    return Array.isArray(data) && data.length > 0 && data.some(x => x && typeof x === 'object' && typeof x.header === 'string' && /gemini|bard/i.test(x.header));
+  }
+  // Gemini activity has no chat ids (unless a gemini.google.com/app/<id> link is present), so prompts
+  // within 45 minutes of each other are grouped into one chat.
+  function parseGeminiActivity(items) {
+    const rows = [];
+    items.forEach(it => {
+      if (!it || !/gemini|bard/i.test(it.header || '')) return;
+      const t = Date.parse(it.time), title = it.title || '';
+      if (!t || !/^(Prompted|Asked) /.test(title)) return;   // skips Used / Gave feedback / Cleared / Created rows
+      const url = it.titleUrl || ((it.details || []).map(x => x && x.url).find(u => /gemini\.google\.com/.test(u || '')) || '');   // Takeout puts the chat link in details[]
+      const m = /gemini\.google\.com\/(?:u\/\d+\/)?app\/([0-9a-f]+)/i.exec(url);
+      rows.push({ t, id: m ? m[1].toLowerCase() : null, prompt: title.replace(/^(Prompted|Asked)\s+/, ''),
+        reply: stripTags(((it.safeHtmlItem || [])[0] || {}).html) });
+    });
+    rows.sort((a, b) => a.t - b.t);
+    // Chats with an id are grouped by id (their prompts interleave in time); the rest by time gap.
+    const groups = [], byId = new Map(); let cur = null;
+    rows.forEach(r => {
+      if (r.id) {
+        let g = byId.get(r.id);
+        if (!g) { g = { id: r.id, rows: [], last: r.t }; byId.set(r.id, g); groups.push(g); }
+        g.rows.push(r); g.last = r.t; return;
+      }
+      if (cur && r.t - cur.last <= 45 * 60000) { cur.rows.push(r); cur.last = r.t; }
+      else { cur = { id: null, rows: [r], last: r.t }; groups.push(cur); }
+    });
+    return groups.map(g => {
+      const f = g.rows[0], title = clip(f.prompt, 60) || 'Untitled chat';
+      return { ext: 'gemini:' + (g.id || 't:' + f.t), title, notes: clip(f.reply || f.prompt, 220), source: 'gemini',
+        createdAt: f.t, updatedAt: g.last, msgs: g.rows.length * 2, _times: g.rows.map(r => r.t), _text: g.rows.map(r => r.prompt + '\n' + r.reply).join('\n') };
+    });
+  }
+  // Older versions grouped Gemini prompts by time gap (ext gemini:t:<time>) because they could not see chat ids.
+  // When the same prompts arrive grouped by id, drop those old entries (their folder carries over).
+  function replaceLegacyGemini(list, allTimes) {
+    const byTime = new Map();
+    list.forEach(n => { if (!/^gemini:t:/.test(n.ext)) (n._times || []).forEach(t => byTime.set(t, n)); });
+    let dropped = 0;
+    state.chats = state.chats.filter(c => {
+      const m = /^gemini:t:(\d+)$/.exec(c.ext || '');
+      const n = m && byTime.get(+m[1]);
+      if (m && !n && allTimes.has(+m[1])) { dropped++; return false; }   // old group that began with a non-prompt row (Cleared feedback, Canvas...)
+      if (!n) return true;
+      if (c.folder && !n.folder) n.folder = c.folder;
+      dropped++; return false;
+    });
+    list.forEach(n => { delete n._times; });
+    return dropped;
+  }
+  function hashStr(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+  function parseAIStudio(d, fileName, modified) {
+    const chunks = (d.chunkedPrompt && d.chunkedPrompt.chunks) || [];
+    const texts = chunks.filter(c => c && c.text && !c.isThought).map(c => [c.role, c.text]);
+    if (!texts.length) return null;
+    const user = (texts.find(x => x[0] === 'user') || texts[0])[1];
+    const base = String(fileName || '').replace(/\.json$/i, '').trim();
+    const t = modified || Date.now();
+    const title = (base && !/^[\w-]{20,}$/.test(base) ? clip(base, 60) : '') || clip(user, 60) || 'Untitled chat';
+    return { ext: 'aistudio:' + base.toLowerCase() + ':' + hashStr(user.slice(0, 300)), title, notes: clip(user, 220), source: 'aistudio',
+      createdAt: t, updatedAt: t, msgs: texts.length, _text: texts.map(x => x[1]).join('\n') };
+  }
+  // ---------- keywords: scanned once at import from the full text; the text itself is not kept ----------
+  const STOP = new Set(('a about above after again all also am an and any are aren as at be because been before being below between both but by can cannot could did do does doing dont down during each few for from further had has have having he her here hers him his how i if in into is it its itself just let like me more most my no nor not now of off on once only or other our out over own same she should so some such than that the their them then there these they this those through to too under until up us very was we were what when where which while who whom why will with would you your yours yeah okay ok yes get got going go know make need want see use using one two new really thing things something maybe also still much many even way well back right said say says tell sure think thought good great lot lots them then than cant didnt isnt wont thats im ive id youre youll weve claude chatgpt assistant human user message messages chat').split(' '));
+  function tokenize(text) {
+    const t = String(text || '').slice(0, 60000).toLowerCase().replace(/https?:\/\/\S+/g, ' ').replace(/[`*_~]/g, ' ');
+    const out = t.match(/\d+(?:\.\d+)+|[a-z][a-z0-9+#-]{2,}/g) || [];
+    return out.map(w => w.replace(/^-+|-+$/g, '')).filter(w => w.length > 2 && !STOP.has(w));
+  }
+  function buildKeywords(list) {
+    const docs = list.map(n => { const m = new Map(); tokenize(n._text).forEach(w => m.set(w, (m.get(w) || 0) + 1)); return m; });
+    const df = new Map();
+    docs.forEach(m => m.forEach((_, w) => df.set(w, (df.get(w) || 0) + 1)));
+    const useIdf = list.length >= 30;
+    list.forEach((n, i) => {
+      const tags = (n._tags || []).map(t => String(t).toLowerCase().replace(/\s+/g, '-'));
+      const scored = [...docs[i]].map(([w, tf]) => [w, (1 + Math.log(tf)) * (useIdf ? Math.log((list.length + 1) / (df.get(w) + 0.5)) : 1) * (/\d/.test(w) ? 0.8 : 1)])
+        .sort((a, b) => b[1] - a[1]).slice(0, 12).map(x => x[0]);
+      n.kw = [...new Set([...tags, ...scored])].slice(0, 14).join(', ');
+      delete n._text; delete n._tags;
+    });
+  }
+  // Day One exports one JSON file per journal, named after the journal: that name becomes the folder.
+  function journalFolder(fileName) {
+    let n = tidyName(String(fileName || '').replace(/\.json$/i, '')).replace(/\s*\(\d+\)$/, '')
+      .replace(/[\u0000-\u001f\u007f\u200b-\u200f\ufeff]/g, '').replace(/\s+/g, ' ').replace(/^[\s.]+|[\s.]+$/g, '').slice(0, 60).trim();
+    if (!n) n = 'Day One';
+    if (/^(all|unsorted)$/i.test(n)) n += ' (Day One)';
+    const same = state.folders.find(f => f.toLowerCase() === n.toLowerCase());   // reuse an existing folder instead of making a near-duplicate
+    return same || n;
+  }
+  function importData(data, fileName, modified) {
     if (data && data.jkchat === 1) return mergeBackup(data);
-    const items = extractItems(data);
-    if (!items) return null;
-    const list = items.map(parseItem).filter(Boolean);
+    let list;
+    if (isGeminiActivity(data)) { list = parseGeminiActivity(data); replaceLegacyGemini(list, new Set(data.map(x => x && Date.parse(x.time)))); }
+    else if (data && !Array.isArray(data) && data.chunkedPrompt) list = [parseAIStudio(data, fileName, modified)].filter(Boolean);
+    else {
+      const items = extractItems(data);
+      if (!items) return null;
+      list = items.map(parseItem).filter(Boolean);
+    }
+    buildKeywords(list);
+    if (fileName && data && !Array.isArray(data) && Array.isArray(data.entries) && list.length) {
+      const folder = journalFolder(fileName);
+      if (!state.folders.includes(folder)) state.folders.push(folder);
+      list.forEach(n => { n.folder = folder; });
+    }
     return mergeIncoming(list);
+  }
+  // Day One attachments are counted, not copied (the files stay in Day One).
+  function mediaLabel(c) {
+    const m = c.media; if (!m) return '';
+    return [m.p && '📷 ' + m.p, m.v && '🎥 ' + m.v, m.a && '🎙 ' + m.a, m.f && '📄 ' + m.f].filter(Boolean).join('  ');
   }
   function clip(s, n) { s = (s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
   function parseItem(it) {
     if (!it || typeof it !== 'object') return null;
     if (it.mapping && typeof it.mapping === 'object') return parseChatGPT(it);
+    if (it.uuid && Array.isArray(it.chat_messages)) return parseClaude(it);
+    if (it.uuid && (it.creationDate || it.text !== undefined)) return parseDayOne(it);
     if (it.uuid) return parseClaude(it);
     const title = it.title || it.name;
     if (title) return { ext: importSource + ':t:' + String(title).toLowerCase(), title: String(title), notes: '', source: importSource, createdAt: Date.now(), updatedAt: Date.now(), msgs: 0 };
@@ -1198,7 +1502,22 @@
       ext: 'claude:' + it.uuid,
       title: (it.name || '').trim() || clip(text, 60) || 'Untitled chat',
       notes: clip(typeof it.summary === 'string' && it.summary ? it.summary : text, 220),
+      _text: msgs.map(m => m.text || (Array.isArray(m.content) ? m.content.filter(p => p.type === 'text').map(p => p.text).join(' ') : '')).join('\n'),
       source: 'claude', createdAt: created, updatedAt: Date.parse(it.updated_at) || created, msgs: msgs.length
+    };
+  }
+  // Day One entry: no title field, so the first line of the text is the title. The body is deliberately not stored (it can change in Day One).
+  function parseDayOne(it) {
+    const body = String(it.text || '').replace(/!\[\]\(dayone-moment:[^)]*\)/g, '').replace(/\\([!-\/:-@\[-`{-~])/g, '$1').trim();
+    const lines = body.split('\n').map(l => l.replace(/^#+\s*/, '').trim()).filter(Boolean);
+    const created = Date.parse(it.creationDate) || Date.now();
+    return {
+      ext: 'dayone:' + String(it.uuid).toLowerCase(),
+      title: clip(lines[0], 60) || 'Photo entry · ' + new Date(created).toLocaleDateString(),
+      media: { p: (it.photos || []).length, v: (it.videos || []).length, a: (it.audios || []).length, f: (it.pdfAttachments || []).length },
+      _text: body, _tags: Array.isArray(it.tags) ? it.tags : [],
+      notes: '',   // text stays in Day One; JKChat keeps title, dates and the link only
+      source: 'dayone', createdAt: created, updatedAt: Date.parse(it.modifiedDate) || created, msgs: 0
     };
   }
   function parseChatGPT(it) {
@@ -1212,6 +1531,7 @@
       ext: 'chatgpt:' + id,
       title: (it.title || '').trim() || clip(text, 60) || 'Untitled chat',
       notes: clip(text, 220),
+      _text: Object.values(it.mapping).map(n => n && n.message && n.message.content && Array.isArray(n.message.content.parts) ? n.message.content.parts.filter(p => typeof p === 'string').join(' ') : '').join('\n'),
       source: 'chatgpt', createdAt: created, updatedAt: it.update_time ? it.update_time * 1000 : created,
       msgs: Object.values(it.mapping).filter(n => n && n.message && n.message.author && (n.message.author.role === 'user' || n.message.author.role === 'assistant')).length
     };
@@ -1224,11 +1544,15 @@
       const cur = byExt.get(n.ext);
       if (cur) {
         existing++;
-        cur.updatedAt = Math.max(cur.updatedAt || 0, n.updatedAt || 0);
+        const edited = n.source === 'dayone';   // journal entries can be edited, so re-import refreshes them
+        cur.updatedAt = edited ? (n.updatedAt || cur.updatedAt) : Math.max(cur.updatedAt || 0, n.updatedAt || 0);
+        if (edited) { cur.createdAt = n.createdAt || cur.createdAt; cur.notes = n.notes; cur.media = n.media; }
         cur.msgs = n.msgs || cur.msgs;
         if (cur.title === cur.origTitle) cur.title = n.title;   // keep titles the user renamed
         cur.origTitle = n.title;
+        if (n.kw) cur.kw = n.kw;
         if (!cur.notes && n.notes) cur.notes = n.notes;
+        if (!cur.folder && n.folder) cur.folder = n.folder;   // fills unsorted entries only, never moves sorted ones
         continue;
       }
       if (dismissed.has(n.ext)) { skipped++; continue; }
@@ -1345,16 +1669,133 @@
   };
   $('newFolderInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('addFolderBtn').click(); });
 
-  $('exportBtn').onclick = () => {
+  function downloadBackup(prefix) {
     const payload = { jkchat: 1, exportedAt: new Date().toISOString(), folders: state.folders, fparent: state.fparent, dismissed: state.dismissed, queue: state.queue, chats: state.chats };
     const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'jkchat-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.download = prefix + new Date().toISOString().slice(0, 10) + '.json';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-    showToast('Backup saved');
+  }
+  $('exportBtn').onclick = () => { downloadBackup('jkchat-backup-'); showToast('Backup saved'); };
+
+  // ---------- clean-up: scrub names (encoding leftovers, entities, spacing), merge duplicates; plan first, backup, undo ----------
+  const ENTITY = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&apos;': "'", '&#39;': "'", '&nbsp;': ' ' };
+  function decodePercent(s) {
+    if (!/%[0-9a-fA-F]{2}/.test(s)) return s;
+    try { return decodeURIComponent(s); }
+    catch (_) { return s.replace(/%([0-7][0-9a-fA-F])/g, (m, x) => String.fromCharCode(parseInt(x, 16))); }   // malformed: decode plain ASCII codes only
+  }
+  function tidyName(s) {
+    return decodePercent(String(s == null ? '' : s)).replace(/&(amp|lt|gt|quot|apos|nbsp|#39);/g, m => ENTITY[m])
+      .normalize('NFC').replace(/[\u0000-\u001f\u007f​-‏﻿]/g, '').replace(/\\([!-\/:-@\[-`{-~])/g, '$1').replace(/\s+/g, ' ').trim();
+  }
+  // Journal-style names: "LookingForLove" -> "Looking For Love", "12StepProgram(s)" -> "12 Step Program(s)", "$$-JKSoftware" -> "JK Software".
+  function styleName(n) {
+    if (/\s/.test(n)) return n;
+    return n.replace(/^[\$#\-_.\s]+/, '').replace(/([a-z])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').replace(/(\d)([A-Z])/g, '$1 $2').trim() || n;
+  }
+  function planCleanup() {
+    const dayoneOnly = f => { const cs = state.chats.filter(c => c.folder === f); return cs.length > 0 && cs.every(c => c.source === 'dayone'); };
+    const raw = [];
+    state.folders.forEach(f => {
+      let n = tidyName(f); const why = [];
+      if (n !== f) why.push('encoding / spacing');
+      if (dayoneOnly(f)) { const st = styleName(n); if (st !== n) { n = st; why.push('journal name style'); } }
+      if (!n || /^(all|unsorted)$/i.test(n)) return;
+      if (n !== f) raw.push({ from: f, to: n, why: why.join(' + ') });
+    });
+    // Folders whose cleaned name matches another folder (ignoring case) are merged into it.
+    const finalOf = new Map(raw.map(r => [r.from, r.to]));
+    const canon = new Map();   // lowercase -> chosen spelling
+    state.folders.forEach(f => { const n = finalOf.get(f) || f, k = n.toLowerCase(); if (!canon.has(k)) canon.set(k, n); else if (!finalOf.has(f)) canon.set(k, f); });   // a folder already spelled right wins
+    const plan = { renames: [], merges: [], titles: [], notes: 0, dupes: [] };
+    state.folders.forEach(f => {
+      const n = finalOf.get(f) || f, to = canon.get(n.toLowerCase());
+      if (to === f) return;
+      const r = raw.find(x => x.from === f);
+      const merge = state.folders.some(g => g !== f && (finalOf.get(g) || g) === to);
+      (merge ? plan.merges : plan.renames).push({ from: f, to, why: (r ? r.why : 'same name as another folder') + (merge ? ' (merged into it)' : ''), on: true });
+    });
+    state.chats.forEach(c => {
+      const t = tidyName(c.title) || 'Untitled chat';
+      if (t !== c.title) plan.titles.push({ id: c.id, from: c.title, to: t });
+      if (c.notes && tidyName(c.notes) !== c.notes) plan.notes++;
+    });
+    const seen = new Map();
+    state.chats.forEach(c => { if (!c.ext) return; if (seen.has(c.ext)) plan.dupes.push(c.id); else seen.set(c.ext, c.id); });
+    return plan;
+  }
+  function applyCleanup(plan) {
+    const map = new Map([...plan.renames, ...plan.merges].filter(r => r.on).map(r => [r.from, r.to]));
+    const fin = f => (map.has(f) ? map.get(f) : f);
+    const uniq = []; state.folders.map(fin).forEach(f => { if (!uniq.includes(f)) uniq.push(f); });
+    state.folders = uniq;
+    state.chats.forEach(c => { if (c.folder) c.folder = fin(c.folder); });
+    const np = {};
+    Object.entries(state.fparent).forEach(([k, v]) => { const nk = fin(k), nv = fin(v); if (nk !== nv && !np[nk]) np[nk] = nv; });
+    state.fparent = np;
+    const col = {}; Object.entries(state.collapsed).forEach(([k, v]) => { col[fin(k)] = v; }); state.collapsed = col;
+    state.activeFolder = fin(state.activeFolder);
+    state.chats.forEach(c => {
+      const t = tidyName(c.title) || 'Untitled chat';
+      if (t !== c.title) { if (c.origTitle === c.title) c.origTitle = t; c.title = t; }
+      if (c.origTitle) c.origTitle = tidyName(c.origTitle) || c.title;
+      if (c.notes) c.notes = tidyName(c.notes);
+    });
+    const drop = new Set(plan.dupes);   // same source id twice: keep the first (its folder wins unless empty)
+    const keep = new Map(state.chats.filter(c => c.ext && !drop.has(c.id)).map(c => [c.ext, c]));
+    state.chats.filter(c => drop.has(c.id)).forEach(c => { const k = keep.get(c.ext); if (k && !k.folder && c.folder) k.folder = c.folder; });
+    state.chats = state.chats.filter(c => !drop.has(c.id));
+    fixParents(state);
+  }
+  function idbSetKey(k, v) { return idb().then(db => new Promise(res => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = () => res(true); t.onerror = () => res(false); })).catch(() => false); }
+  function idbGetKey(k) { return idb().then(db => new Promise(res => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(null); })).catch(() => null); }
+  let pendingPlan = null;
+  function renderCleanPlan() {
+    const p = pendingPlan, body = $('cleanBody');
+    const total = p.renames.length + p.merges.length + p.titles.length + p.dupes.length + p.notes;
+    if (!total) { body.innerHTML = '<p class="import-help">Nothing to clean up. Folder names, chat titles and notes all look tidy.</p>'; $('cleanApply').style.display = 'none'; return; }
+    $('cleanApply').style.display = '';
+    const rows = (list, kind) => list.map((r, i) => '<label class="clean-row"><input type="checkbox" data-k="' + kind + '" data-i="' + i + '"' + (r.on ? ' checked' : '') + '><span>' + escapeHtml(r.from) + ' <span class="arrow">→</span> <b>' + escapeHtml(r.to) + '</b><br><span class="clean-why">' + escapeHtml(r.why) + '</span></span></label>').join('');
+    body.innerHTML =
+      (p.renames.length ? '<div class="field"><label>Rename folders (' + p.renames.length + ')</label>' + rows(p.renames, 'renames') + '</div>' : '') +
+      (p.merges.length ? '<div class="field"><label>Merge folders (' + p.merges.length + ')</label>' + rows(p.merges, 'merges') + '</div>' : '') +
+      (p.titles.length ? '<div class="field"><label>Fix chat titles (' + p.titles.length + ')</label><p class="import-help">' + p.titles.slice(0, 4).map(t => escapeHtml(clip(t.from, 40)) + ' → <b>' + escapeHtml(clip(t.to, 40)) + '</b>').join('<br>') + (p.titles.length > 4 ? '<br>and ' + (p.titles.length - 4) + ' more' : '') + '</p></div>' : '') +
+      (p.notes ? '<div class="field"><label>Tidy notes</label><p class="import-help">' + p.notes + ' notes have codes or extra spaces.</p></div>' : '') +
+      (p.dupes.length ? '<div class="field"><label>Remove duplicate entries</label><p class="import-help">' + p.dupes.length + ' chats appear twice (same source id); the first is kept.</p></div>' : '') +
+      '<p class="import-help">Apply saves a backup file first and keeps an in-app copy so you can use Undo last clean-up.</p>';
+  }
+  $('cleanBody').addEventListener('change', e => {
+    const c = e.target.closest('input[type=checkbox]'); if (!c || !pendingPlan) return;
+    pendingPlan[c.dataset.k][+c.dataset.i].on = c.checked;
+  });
+  $('scrubBtn').onclick = () => { pendingPlan = planCleanup(); renderCleanPlan(); $('cleanSheetBackdrop').classList.add('open'); };
+  $('cleanCancel').onclick = () => { $('cleanSheetBackdrop').classList.remove('open'); pendingPlan = null; };
+  $('cleanApply').onclick = async () => {
+    if (!pendingPlan) return;
+    const snap = JSON.stringify(state);
+    await idbSetKey('prescrub', snap);
+    try { localStorage.setItem('jkchatorg_prescrub_at', String(Date.now())); } catch (_) {}
+    downloadBackup('jkchat-backup-before-cleanup-');
+    applyCleanup(pendingPlan);
+    const done = pendingPlan; pendingPlan = null;
+    save(); renderAll(); renderFolderListBody();
+    $('cleanSheetBackdrop').classList.remove('open');
+    showToast('Cleaned: ' + (done.renames.filter(r => r.on).length + done.merges.filter(r => r.on).length) + ' folders, ' + done.titles.length + ' titles' + (done.dupes.length ? ', ' + done.dupes.length + ' duplicates' : '') + '. Backup saved; Undo is in Folders.');
+    $('undoScrubBtn').style.display = '';
   };
+  $('undoScrubBtn').onclick = async () => {
+    const snap = await idbGetKey('prescrub');
+    if (!snap) { showToast('Nothing to undo'); return; }
+    if (!confirm('Put everything back the way it was before the last clean-up? Changes made since then are lost.')) return;
+    state = normalize(JSON.parse(snap));
+    save(); renderAll(); renderFolderListBody();
+    showToast('Clean-up undone');
+  };
+  $('scrubBtn').addEventListener('click', () => {});
+  idbGetKey('prescrub').then(v => { if (v) $('undoScrubBtn').style.display = ''; });
 
   $('clearAllBtn').onclick = () => {
     if (!confirm('Delete all ' + state.chats.length + ' chats, all folders, and your sorting from this device? This cannot be undone. Save a backup file first if you want to keep it.')) return;
